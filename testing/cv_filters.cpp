@@ -1,5 +1,8 @@
 #include <math.h>
 
+static unsigned char color_red[]    =  {255,    0,      0};
+static unsigned char color_green[]  =  {0,      255,    0};
+static unsigned char color_black[]  =  {0,      0,      0};
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -98,12 +101,14 @@ void filter_color_hsv(
 
     for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
     
-        unsigned char b  = data[i * 3];
+        unsigned char r  = data[i * 3];
         unsigned char g  = data[i * 3 + 1];
-        unsigned char r  = data[i * 3 + 2];
+        unsigned char b  = data[i * 3 + 2];
         
         unsigned char h, s, v;
         rgb2hsv(r, g, b, h, s, v);
+
+        if(h_max>360 && h<180) h+=360;
 
         if( (h_min<=h && h<=h_max) && (s_min<=s && s<=s_max) && (v_min<=v && v<=v_max)){
             if(fill_color){
@@ -172,18 +177,17 @@ void filter_inverse(unsigned char* data){
 
 void cv_applyFilters(unsigned char* data){
 
-    unsigned char color_red[]    =  {255, 0, 0};
-    unsigned char color_green[]  =  {0, 255, 0};
+    
 
     
     filter_color_hsv(
         data, 
-        48, 60,   // h
-        68, 78,   // s
-        62, 75,   // v
+        110, 130,   // h
+        75, 95,   // s
+        30, 75,   // v
         color_red,     // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
-        color_green,   // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
-        true, 
+        color_black,   // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
+        false, 
         true
     );
 
