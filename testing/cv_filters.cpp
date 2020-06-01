@@ -57,19 +57,6 @@ void hsv2rgb(const unsigned char &src_h, const unsigned char &src_s, const unsig
     dst_b = (unsigned char)(b * 255); // dst_r : 0-255
 }
 
-void test(const unsigned &r, const unsigned &g, const unsigned &b)
-{
-    unsigned char rv_h, rv_s, rv_v;
-    unsigned char rv_r, rv_g, rv_b;
-
-    rgb2hsv(r, g, b, rv_h, rv_s, rv_v);
-    hsv2rgb(rv_h, rv_s, rv_v, rv_r, rv_g, rv_b);
-
-    printf("rgb(%d, %d, %d) -> hsv(%d, %d, %d) -> rgb(%d, %d, %d) ", r, g, b, rv_h, rv_s, rv_v, rv_r, rv_g, rv_b);
-
-    printf("\n");
-}
-
 ////////////////////////
 
 int getWidth(unsigned char* data){
@@ -80,6 +67,7 @@ int getWidth(unsigned char* data){
 
 int getHeight(unsigned char* data){
     int height = *(int*)&data[22];
+    if(height<0) height *= -1;
     return height;
 }
 
@@ -93,6 +81,46 @@ int getHeight(unsigned char* data){
 
 #define bmp_header_size     54
 
+// Закрасить цвет входящий или не входящий в диапазон hsv
+void filter_color_hsv(
+        unsigned char* data, 
+        int h_min, int h_max,                       // [0..360]
+        unsigned char s_min, unsigned char s_max,   // [0..100]
+        unsigned char v_min, unsigned char v_max,   // [0..100]
+        unsigned char* color_to_fill,               // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
+        unsigned char* uncolor_to_fill,             // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
+        bool fill_color, 
+        bool fill_uncolor
+        ){
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
+    
+        unsigned char b  = data[i * 3];
+        unsigned char g  = data[i * 3 + 1];
+        unsigned char r  = data[i * 3 + 2];
+        
+        unsigned char h, s, v;
+        rgb2hsv(r, g, b, h, s, v);
+
+        if( (h_min<=h && h<=h_max) && (s_min<=s && s<=s_max) && (v_min<=v && v<=v_max)){
+            if(fill_color){
+                data[i * 3]       = color_to_fill[2];
+                data[i * 3 + 1]   = color_to_fill[1];
+                data[i * 3 + 2]   = color_to_fill[0];
+            }
+        }else{
+            if(fill_uncolor){
+                data[i * 3]       = uncolor_to_fill[2];
+                data[i * 3 + 1]   = uncolor_to_fill[1];
+                data[i * 3 + 2]   = uncolor_to_fill[0]; 
+            } 
+        }
+    }
+}
+
 // Превращает всю картинку в черно белую без оттенков серого
 void filter_contrast_blackWhite(unsigned char* data){
 
@@ -101,9 +129,9 @@ void filter_contrast_blackWhite(unsigned char* data){
 
   for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
      
-    unsigned char r  = data[i * 3];
+    unsigned char b  = data[i * 3];
     unsigned char g  = data[i * 3 + 1];
-    unsigned char b  = data[i * 3 + 2];
+    unsigned char r  = data[i * 3 + 2];
     
     unsigned char grey_color = (r + g + b)/3;
   
@@ -143,6 +171,24 @@ void filter_inverse(unsigned char* data){
 */
 
 void cv_applyFilters(unsigned char* data){
-    filter_contrast_blackWhite(data);
-    filter_inverse(data);
+
+    unsigned char color_red[]    =  {255, 0, 0};
+    unsigned char color_green[]  =  {0, 255, 0};
+
+    
+    filter_color_hsv(
+        data, 
+        48, 60,   // h
+        68, 78,   // s
+        62, 75,   // v
+        color_red,     // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
+        color_green,   // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
+        true, 
+        true
+    );
+
+    //filter_contrast_blackWhite(data);
+    //filter_inverse(data);
+
+
 }
