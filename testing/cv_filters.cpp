@@ -18,7 +18,7 @@ static unsigned char color_black[]  =  {0,      0,      0};
 #define max_f(a, b, c)  (fmax(a, fmax(b, c)))
 
 
-void rgb2hsv(const unsigned char &src_r, const unsigned char &src_g, const unsigned char &src_b, unsigned char &dst_h, unsigned char &dst_s, unsigned char &dst_v){
+void rgb2hsv(const unsigned char &src_r, const unsigned char &src_g, const unsigned char &src_b, unsigned int &dst_h, unsigned char &dst_s, unsigned char &dst_v){
     float r = src_r / 255.0f; float g = src_g / 255.0f; float b = src_b / 255.0f;
     float h, s, v; // h:0-360.0, s:0.0-100.0, v:0.0-100.0
     float max = max_f(r, g, b); float min = min_f(r, g, b);
@@ -32,12 +32,12 @@ void rgb2hsv(const unsigned char &src_r, const unsigned char &src_g, const unsig
         else h = 60 * ((r - g) / (max - min)) + 240;
     }
     if (h < 0) h += 360.0f;
-    dst_h = (unsigned char)(h );   // dst_h : 0-180
+    dst_h = (unsigned int)(h );   // dst_h : 0-180
     dst_s = (unsigned char)(s * 100); // dst_s : 0-255
     dst_v = (unsigned char)(v * 100); // dst_v : 0-255
 }
 
-void hsv2rgb(const unsigned char &src_h, const unsigned char &src_s, const unsigned char &src_v, unsigned char &dst_r, unsigned char &dst_g, unsigned char &dst_b){
+void hsv2rgb(const unsigned int &src_h, const unsigned char &src_s, const unsigned char &src_v, unsigned char &dst_r, unsigned char &dst_g, unsigned char &dst_b){
     float h = src_h *   1.0f; // 0-360
     float s = src_s / 100.0f; // 0.0-1.0
     float v = src_v / 100.0f; // 0.0-1.0
@@ -101,11 +101,12 @@ void filter_color_hsv(
 
     for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
     
-        unsigned char r  = data[i * 3];
+        unsigned char b  = data[i * 3];
         unsigned char g  = data[i * 3 + 1];
-        unsigned char b  = data[i * 3 + 2];
+        unsigned char r  = data[i * 3 + 2];
         
-        unsigned char h, s, v;
+        unsigned int h;
+        unsigned char s, v;
         rgb2hsv(r, g, b, h, s, v);
 
         if(h_max>360 && h<180) h+=360;
@@ -113,8 +114,8 @@ void filter_color_hsv(
         if( (h_min<=h && h<=h_max) && (s_min<=s && s<=s_max) && (v_min<=v && v<=v_max)){
             if(fill_color){
                 data[i * 3]       = color_to_fill[2];
-                data[i * 3 + 1]   = color_to_fill[1];
-                data[i * 3 + 2]   = color_to_fill[0];
+                data[i * 3 + 1]   = color_to_fill[0];
+                data[i * 3 + 2]   = color_to_fill[1];
             }
         }else{
             if(fill_uncolor){
@@ -182,13 +183,13 @@ void cv_applyFilters(unsigned char* data){
     
     filter_color_hsv(
         data, 
-        110, 130,   // h
-        75, 95,   // s
+        350, 370,   // h
+        75, 110,   // s
         30, 75,   // v
         color_red,     // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
         color_black,   // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
-        false, 
-        true
+        true, 
+        false
     );
 
     //filter_contrast_blackWhite(data);
