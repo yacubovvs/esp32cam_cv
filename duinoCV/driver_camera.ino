@@ -82,14 +82,6 @@ void serveJpg()
   frame->writeTo(client);
 }
 
-void handleJpgLo()
-{
-  if (!esp32cam::Camera.changeResolution(loRes)) {
-    console_print("SET-LO-RES FAIL");
-  }
-  serveJpg();
-}
-
 void handleJpgHi()
 {
   if (!esp32cam::Camera.changeResolution(hiRes)) {
@@ -153,16 +145,15 @@ void setup_camera()
   console_print("http://" + ip2Str(WiFi.localIP()));
   console_print("  /cam.bmp");
   console_print("  /cv.bmp");
-  console_print("  /cam-lo.jpg");
-  console_print("  /cam-hi.jpg");
+  console_print("  /cv_nofilter.bmp");
+  console_print("  /cam.jpg");
   console_print("  /cam.mjpeg");
 
-  server.on("/cam.bmp",     handleBmp);
-  server.on("/cv.bmp",      handleCV);
-  server.on("/cam-lo.jpg",  handleJpgLo);
-  server.on("/cam-hi.jpg",  handleJpgHi);
-  server.on("/cam.jpg",     handleJpg);
-  server.on("/cam.mjpeg",   handleMjpeg);
+  server.on("/cam.bmp",           handleBmp);
+  server.on("/cv.bmp",            handleCV);
+  server.on("/cv_nofilter.bmp",   handleCV_NF);
+  server.on("/cam.jpg",        handleJpgHi);
+  server.on("/cam.mjpeg",         handleMjpeg);
 
   server.begin();
 }
