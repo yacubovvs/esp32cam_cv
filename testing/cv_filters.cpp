@@ -1,8 +1,9 @@
-#include <math.h>
+//#include <math.h>
 
-static unsigned char color_red[]    =  {255,    0,      0};
-static unsigned char color_green[]  =  {0,      255,    0};
-static unsigned char color_black[]  =  {0,      0,      0};
+static unsigned char color_red[]    =  {    255,    0,      0       };
+static unsigned char color_green[]  =  {    0,      255,    0       };
+static unsigned char color_black[]  =  {    0,      0,      0       };
+static unsigned char color_white[]  =  {    255,    255,    255     };
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -99,11 +100,13 @@ void filter_color_hsv(
     int data_width = getWidth(data);
     int data_height = getHeight(data);
 
-    for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
+    for(long i=0; i<data_width*data_height; i++){
+
+        long pixel_position = bmp_header_size + i*3;
     
-        unsigned char b  = data[i * 3];
-        unsigned char g  = data[i * 3 + 1];
-        unsigned char r  = data[i * 3 + 2];
+        unsigned char b  = data[pixel_position ];
+        unsigned char g  = data[pixel_position  + 1];
+        unsigned char r  = data[pixel_position  + 2];
         
         unsigned int h;
         unsigned char s, v;
@@ -113,60 +116,70 @@ void filter_color_hsv(
 
         if( (h_min<=h && h<=h_max) && (s_min<=s && s<=s_max) && (v_min<=v && v<=v_max)){
             if(fill_color){
-                data[i * 3]       = color_to_fill[2];
-                data[i * 3 + 1]   = color_to_fill[0];
-                data[i * 3 + 2]   = color_to_fill[1];
+                data[pixel_position ]       = color_to_fill[2];
+                data[pixel_position  + 1]   = color_to_fill[0];
+                data[pixel_position  + 2]   = color_to_fill[1];
             }
         }else{
             if(fill_uncolor){
-                data[i * 3]       = uncolor_to_fill[2];
-                data[i * 3 + 1]   = uncolor_to_fill[1];
-                data[i * 3 + 2]   = uncolor_to_fill[0]; 
+                data[pixel_position ]       = uncolor_to_fill[2];
+                data[pixel_position  + 1]   = uncolor_to_fill[1];
+                data[pixel_position  + 2]   = uncolor_to_fill[0]; 
             } 
         }
     }
 }
 
 // Превращает всю картинку в черно белую без оттенков серого
-void filter_contrast_blackWhite(unsigned char* data){
+void filter_contrast_blackWhite(unsigned char* data, unsigned char limit){
+
+  limit = 255-limit;
 
   int data_width = getWidth(data);
   int data_height = getHeight(data);
 
-  for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
+  for(long i=0; i<data_width*data_height; i++){
+
+    long pixel_position = bmp_header_size + i*3;
      
-    unsigned char b  = data[i * 3];
-    unsigned char g  = data[i * 3 + 1];
-    unsigned char r  = data[i * 3 + 2];
+    unsigned char b  = data[pixel_position];
+    unsigned char g  = data[pixel_position + 1];
+    unsigned char r  = data[pixel_position + 2];
     
     unsigned char grey_color = (r + g + b)/3;
   
-    if(grey_color>127){
-      data[i * 3]       = 255;
-      data[i * 3 + 1]   = 255;
-      data[i * 3 + 2]   = 255;
+    if(grey_color>limit){
+        data[pixel_position]       = 255;
+        data[pixel_position + 1]   = 255;
+        data[pixel_position + 2]   = 255;
+        
     }else{
-      data[i * 3]       = 0;
-      data[i * 3 + 1]   = 0;
-      data[i * 3 + 2]   = 0;  
+        data[pixel_position]       = 0;
+        data[pixel_position + 1]   = 0;
+        data[pixel_position + 2]   = 0;  
+        
     }
     
   }
 }
+void filter_contrast_blackWhite(unsigned char* data){ filter_contrast_blackWhite(data, 127); } 
 
 // Инвертирует все цвета
 void filter_inverse(unsigned char* data){
     int data_width = getWidth(data);
     int data_height = getHeight(data);
 
-    for(long i=bmp_header_size; i<bmp_header_size + data_width*data_height; i++){
+    for(long i=0; i<data_width*data_height; i++){
+
+        long pixel_position = bmp_header_size + i*3;
         
-        data[i * 3]     = 255 - data[i * 3];
-        data[i * 3 + 1] = 255 - data[i * 3 + 1];
-        data[i * 3 + 2] = 255 - data[i * 3 + 2];
+        data[pixel_position]     = 255 - data[pixel_position];
+        data[pixel_position + 1] = 255 - data[pixel_position + 1];
+        data[pixel_position + 2] = 255 - data[pixel_position + 2];
         
     }
 }
+
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -176,24 +189,33 @@ void filter_inverse(unsigned char* data){
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
+
+
 void cv_applyFilters(unsigned char* data){
 
     
+    filter_contrast_blackWhite(data, 200);
 
-    
+    /*
     filter_color_hsv(
         data, 
         350, 370,   // h
-        75, 110,   // s
+        50, 110,   // s
+        //75, 110,   // s
         30, 75,   // v
-        color_red,     // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
+        color_white,     // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
         color_black,   // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
         true, 
-        false
+        true
     );
+    
 
     //filter_contrast_blackWhite(data);
+
+
     //filter_inverse(data);
+
+    */
 
 
 }

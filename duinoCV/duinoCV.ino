@@ -28,11 +28,19 @@
 /* Size of computer vision frame */
 
 /* 
-Available resolutions:
-160x120
-320x240
-640x480
-800x600
+
+Available modes:
+
+MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE SIZE
+1.      160x120         color 24bit       100
+2.      320x240         color 24bit       100
+3.      640x480         color 24bit       100
+4.      800x600         color 24bit       95?97?99?
+5.      1024x768        color 24bit       97
+
+
+* - FPS with out using filters
+
 */
 #define cvRes_width     160
 #define cvRes_height    120
@@ -61,7 +69,7 @@ WebServer server(80);
 
 static auto loRes  = esp32cam::Resolution::find(320, 240);
 static auto vgaRes = esp32cam::Resolution::find(640, 480);
-static auto hiRes  = esp32cam::Resolution::find(800, 600);
+static auto hiRes  = esp32cam::Resolution::find(1600, 1200); // need resolution lower 100
 static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
 
 /*
@@ -76,6 +84,7 @@ static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
     setup_display();
   
     console_print("Initing camera...");
+    delay(250);
     setup_camera();    
   
   }
@@ -86,6 +95,7 @@ static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
     #ifdef display_camera_enable
       cv_diplay_camera_loop();
     #endif
+    cd_loop();
     loop_server();  
   
     //drawFrame();
