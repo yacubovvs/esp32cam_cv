@@ -131,7 +131,7 @@ void filter_color_hsv(
 }
 
 // Превращает всю картинку в черно белую без оттенков серого
-void filter_contrast_blackWhite(unsigned char* data, unsigned char limit){
+void filter_blackWhite(unsigned char* data, unsigned char limit){
 
   limit = 255-limit;
 
@@ -162,7 +162,7 @@ void filter_contrast_blackWhite(unsigned char* data, unsigned char limit){
     
   }
 }
-void filter_contrast_blackWhite(unsigned char* data){ filter_contrast_blackWhite(data, 127); } 
+void filter_blackWhite(unsigned char* data){ filter_blackWhite(data, 127); } 
 
 // Инвертирует все цвета
 void filter_inverse(unsigned char* data){
@@ -191,14 +191,20 @@ void filter_blur_filter(unsigned char* data, int cycles){
             for(long x=1; x<data_width-1; x++){
                 long pixel_position = bmp_header_size + y*data_width*3 +  x*3;
                 
-                
                 data[pixel_position]     = ( data[pixel_position-3] + data[pixel_position+3] ) / 2;
-                data[pixel_position]     = ( data[pixel_position - data_width*3] + data[pixel_position + data_width*3] ) / 2;
-
                 data[pixel_position + 1] = ( data[pixel_position-3 + 1] + data[pixel_position+3 + 1] ) / 2;
-                data[pixel_position + 1]     = ( data[pixel_position - data_width*3 + 1] + data[pixel_position + data_width*3 + 1] ) / 2;
-
                 data[pixel_position + 2] = ( data[pixel_position-3 + 2] + data[pixel_position+3 + 2] ) / 2;
+
+            }
+        }
+
+        for(long y=1; y<data_height-1; y++){
+            for(long x=1; x<data_width-1; x++){
+                long pixel_position = bmp_header_size + y*data_width*3 +  x*3;
+                
+                
+                data[pixel_position]     = ( data[pixel_position - data_width*3] + data[pixel_position + data_width*3] ) / 2;
+                data[pixel_position + 1]     = ( data[pixel_position - data_width*3 + 1] + data[pixel_position + data_width*3 + 1] ) / 2;
                 data[pixel_position + 2]     = ( data[pixel_position - data_width*3 + 2] + data[pixel_position + data_width*3 + 2] ) / 2;
 
             }
@@ -282,6 +288,56 @@ void filter_clearSpectr(unsigned char* data, bool r, bool g, bool b){
   }
 }
 
+// Изменение яркости
+void filter_brightness(unsigned char* data, int brightness){
+
+  int data_width = getWidth(data);
+  int data_height = getHeight(data);
+
+  for(long i=0; i<data_width*data_height; i++){
+
+    long pixel_position = bmp_header_size + i*3;
+      
+    int b = data[pixel_position]     + brightness;
+    int g = data[pixel_position + 1] + brightness;
+    int r = data[pixel_position + 2] + brightness;
+
+    if(b<0) b=0; if(b>255) b=255;
+    if(g<0) g=0; if(g>255) g=255;
+    if(r<0) r=0; if(r>255) r=255;
+
+    data[pixel_position]     = b;
+    data[pixel_position + 1] = g;
+    data[pixel_position + 2] = r;
+    
+  }
+}
+
+// Изменение яркости
+void filter_contrast(unsigned char* data, int contrast){
+
+  int data_width = getWidth(data);
+  int data_height = getHeight(data);
+
+  for(long i=0; i<data_width*data_height; i++){
+
+    long pixel_position = bmp_header_size + i*3;
+      
+    int b = data[pixel_position]     * contrast / 100;
+    int g = data[pixel_position + 1] * contrast / 100;
+    int r = data[pixel_position + 2] * contrast / 100;
+
+    if(b>255) b=255;
+    if(g>255) g=255;
+    if(r>255) r=255;
+
+    data[pixel_position]     = b;
+    data[pixel_position + 1] = g;
+    data[pixel_position + 2] = r;
+    
+  }
+}
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -294,47 +350,68 @@ void filter_clearSpectr(unsigned char* data, bool r, bool g, bool b){
 
 void cv_applyFilters(unsigned char* data){
 
-    filter_clearSpectr(data, 1, 0, 0);
-    
+
+    filter_blackWhite(
+        data, 
+        165             // Яркость 0..255
+    );
+
     /*
+
+    // Изменение контраста
+    filter_contrast(
+        data, 
+        120   //  -0..1000
+    );
+
+    // Изменение яркости
+    filter_brightness(
+        data, 
+        -100   //  -255..255
+    );
 
     // Очищает выбранный спектр
     filter_clearSpectr(
         data, 
-        1,  // Очистить красный спектр 0-1
-        0,  // Очистить зеленвй спектр 0-1
-        0   // Очистить синий спектр 0-1
+        1,  // Очистить красный спектр 0..1
+        0,  // Очистить зеленвй спектр 0..1
+        0   // Очистить синий спектр 0..1
     );
 
     filter_toGray(data);    // Перевести картинку в оттенки серого
     filter_toGray(
         data, 
-        0,                  // Перевести в серый по красному спектру 0-1
-        0,                  // Перевести в серый по зеленому спектру 0-1
-        1                   // Перевести в серый по синему спектру 0-1
+        0,                  // Перевести в серый по красному спектру 0..1
+        0,                  // Перевести в серый по зеленому спектру 0..1
+        1                   // Перевести в серый по синему спектру 0..1
     );
 
+    // Фильтр по hsv
     filter_color_hsv(
         data, 
-        350, 380,       // h 0-360 (можно указывать на 180 больше 380, если в диапозон должно попасть 0-180)
-        20, 100,        // s 0-100
-        30, 75,         // v 0-100
+        350, 380,       // h 0..360 (можно указывать на 180 больше 380, если в диапозон должно попасть 0..180)
+        20, 100,        // s 0..100
+        30, 75,         // v 0..100
         color_white,    // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
         color_black,    // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
         true,           // Закрашивать цветом, если условие фильтра выполняется
         true            // Закрашивать цветом, если условие фильтра не выполняется
     );
 
-    filter_contrast_blackWhite(data);
-    filter_contrast_blackWhite(
+    // Перевод в черно белое изображение
+    filter_blackWhite(data);
+    filter_blackWhite(
         data, 
-        200             // Яркость 0-255
+        200             // Яркость 0..255
     );
 
+    // Инверсировать цвета
     filter_inverse(data);
 
-    filter_blur_filter(data, 
-        15              // Количество циклов размывания
+    // Размытие
+    filter_blur_filter(
+        data, 
+        15              // Количество циклов размытия
     );
 
     */

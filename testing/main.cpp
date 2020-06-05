@@ -81,7 +81,7 @@ int main()
     //filter_contrast_blackWhite(frame_data);
     cv_applyFilters(frame_data);
 
-    char response[] = "HTTP/1.1 200 OK\r\nContent-Type: image/bmp\r\nCache-Control: no-cache\r\n\Allow: GET\r\nAccept-Ranges: bytes\r\nKeep-Alive: timeout=150, max=300\r\nContent-Length: 9999999999\r\n\r\n";
+    char response[] = "HTTP/1.1 200 OK\r\nContent-Type: image/bmp\r\nCache-Control: no-cache\r\nAllow: GET\r\nAccept-Ranges: bytes\r\nKeep-Alive: timeout=150, max=300\r\nContent-Length: 9999999999\r\n\r\n";
 
     write(client_fd, response, sizeof(response) - 1);         //  Headers
     //write(client_fd, frame_data, (long)sizeof(frame_data) - 0);     //  File data
