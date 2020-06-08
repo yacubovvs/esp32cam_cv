@@ -74,26 +74,32 @@ void console_print(String str){
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
+bool camera_drawFrame = true;
 
+bool drawFrameEnable(){
+  return camera_drawFrame;
+}
+
+bool drawFrameEnable(bool dFrame){
+  camera_drawFrame = dFrame;
+  return camera_drawFrame;
+}
 
 void display_drawFrame(uint8_t* data){
   
-
+  if(!drawFrameEnable()) return;
+  
   u8g2.clearBuffer();
 
-  //#define cvRes_width   160
-  //#define cvRes_height  120
+  int data_width = getWidth(data);
+  int data_height = getHeight(data);
 
-  //#define display_width   128
-  //#define display_height  64
-
-  byte display_devider = min(cvRes_width/display_width, cvRes_height/display_height);
-  byte x_shift = (cvRes_width - display_width)/display_devider/2;
-  byte y_shift = (cvRes_height - display_height)/display_devider/2;
+  byte display_devider = min(data_width/display_width, data_height/display_height);
+  byte x_shift = (data_width - display_width)/display_devider/2;
+  byte y_shift = (data_height - display_height)/display_devider/2;
 
   for(long y=0; y<display_height; y++){
     for(long x=0; x<display_width; x++){
-
     
       long pixelPozition = bmp_header_size + x_shift + x*3*display_devider + (y*display_devider + y_shift) * cvRes_width * 3;
       byte r  = data[pixelPozition];
@@ -103,13 +109,15 @@ void display_drawFrame(uint8_t* data){
       byte grey_color = (r + g + b)/3;
     
       if(grey_color>display_camera_contrast){
-        u8g2.drawPixel(x,display_height-y);
+        #ifdef display_invert_y
+          u8g2.drawPixel(x,display_height-y);
+        #else
+          u8g2.drawPixel(x,y);
+        #endif
       }
     }
   }
 
   u8g2.sendBuffer();
-
-  //console_print(String(red) + " " + String(green) + " " + String(blue));
 
 }

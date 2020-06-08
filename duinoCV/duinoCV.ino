@@ -54,6 +54,13 @@ MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE
 #define display_width             128
 #define display_height            64
 
+//#define display_invert_y
+
+
+#define controls_enable
+#define controls_btn1 12
+#define controls_btn2 13
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -62,14 +69,16 @@ MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 15, /* data=*/ 14);   // ESP32 Thing, HW I2C with pin remapping
-typedef u8g2_uint_t u8g_uint_t;
+#ifdef display_ssd1306_i2c
+  U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 15, /* data=*/ 14);   // ESP32 Thing, HW I2C with pin remapping
+  typedef u8g2_uint_t u8g_uint_t;
+#endif
 
 WebServer server(80);
 
 static auto loRes  = esp32cam::Resolution::find(320, 240);
 static auto vgaRes = esp32cam::Resolution::find(640, 480);
-static auto hiRes  = esp32cam::Resolution::find(1600, 1200); // need resolution lower 100
+static auto hiRes  = esp32cam::Resolution::find(1600, 1200); // need quality lower 100
 static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
 
 /*
@@ -86,18 +95,25 @@ static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
     console_print("Initing camera...");
     delay(250);
     setup_camera();    
+
+    #ifdef controls_enable
+      controls_setup();
+    #endif
   
   }
 
   
   
   void loop(){
+
+    #ifdef controls_enable
+      controls_loop();
+    #endif
+    
     #ifdef display_camera_enable
       cv_diplay_camera_loop();
     #endif
     cd_loop();
     loop_server();  
   
-    //drawFrame();
-    //delay(250);
   }

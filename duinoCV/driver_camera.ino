@@ -35,36 +35,6 @@ void handleBmp()
 }
 
 
-/*
-void handleBmp()
-{
-  if (!esp32cam::Camera.changeResolution(loRes)) {
-    console_print("SET-LO-RES FAIL");
-  }
-
-  auto frame = esp32cam::capture();
-  if (frame == nullptr) {
-    console_print("CAPTURE FAIL");
-    server.send(503, "", "");
-    return;
-  }
-  console_print("CAPTURE OK " +  String(frame->getWidth()) + " " + String(frame->getHeight()) + " " +
-                String(static_cast<int>(frame->size())));
-
-  if (!frame->toBmp()) {
-    console_print("CONVERT FAIL");
-    server.send(503, "", "");
-    return;
-  }
-  console_print("CONVERT OK " + String(frame->getWidth()) + " " + String(frame->getHeight()) + " " +
-                String(static_cast<int>(frame->size())));
-
-  server.setContentLength(frame->size());
-  server.send(200, "image/bmp");
-  WiFiClient client = server.client();
-  frame->writeTo(client);
-}*/
-
 void serveJpg()
 {
   auto frame = esp32cam::capture();

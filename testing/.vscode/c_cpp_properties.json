@@ -4,7 +4,9 @@
             "name": "Mac",
             "includePath": [
                 "/Users/mac/Library/Arduino15/packages/esp8266/tools/**",
-                "/Users/mac/Library/Arduino15/packages/esp8266/hardware/esp8266/2.5.2/**"
+                "/Users/mac/Library/Arduino15/packages/esp8266/hardware/esp8266/2.5.2/**",
+                "/home/usr/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/**",
+                "/home/usr/.arduino15/packages/esp8266/tools/**"
             ],
             "forcedInclude": [],
             "macFrameworkPath": [

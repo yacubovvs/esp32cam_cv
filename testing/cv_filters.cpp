@@ -1,9 +1,10 @@
-//#include <math.h>
+#define bmp_header_size     54
 
 static unsigned char color_red[]    =  {    255,    0,      0       };
 static unsigned char color_green[]  =  {    0,      255,    0       };
 static unsigned char color_black[]  =  {    0,      0,      0       };
 static unsigned char color_white[]  =  {    255,    255,    255     };
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -75,6 +76,22 @@ int getHeight(unsigned char* data){
     return height;
 }
 
+void get_pixel_rgb(unsigned char* data, int width, int height, int x, int y, unsigned char &r, unsigned char &g, unsigned char &b){
+    long pixel_position = bmp_header_size + x*3 + y*3*width;
+
+    b = data[pixel_position];
+    g = data[pixel_position + 1];
+    r = data[pixel_position + 2];
+}
+
+void set_pixel_rgb(unsigned char* data, int width, int height, int x, int y, unsigned char r, unsigned char g, unsigned char b){
+    long pixel_position = bmp_header_size + x*3 + y*3*width;
+
+    data[pixel_position]        = b;
+    data[pixel_position + 1]    = g;
+    data[pixel_position + 2]    = r;
+}
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -83,7 +100,6 @@ int getHeight(unsigned char* data){
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
-#define bmp_header_size     54
 
 // Закрасить цвет входящий или не входящий в диапазон hsv
 void filter_color_hsv(
@@ -212,7 +228,6 @@ void filter_blur_filter(unsigned char* data, int cycles){
     }
 }
 
-
 // Преобразуем в оттенки серого
 void filter_toGray(unsigned char* data, bool r, bool g, bool b){
     int data_width = getWidth(data);
@@ -338,6 +353,191 @@ void filter_contrast(unsigned char* data, int contrast){
   }
 }
 
+// Бинарное цетрально взвешенное значение
+void filter_blackWhite_centralAreaWieght(unsigned char* data, int areaSize_px, unsigned char min_blackWhiteDifference){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    int arrays_x = data_width/areaSize_px + (data_width%areaSize_px==0?0:1);
+    int arrays_y = data_height/areaSize_px + (data_height%areaSize_px==0?0:1);
+    unsigned char brightness_avr = 127;
+
+    for(int x=0; x<arrays_x; x++){
+        for(int y=0; y<arrays_y; y++){
+
+            long area_position = bmp_header_size + x*3*areaSize_px + y*3*data_width*areaSize_px;
+
+            //data[area_position]     = 0;
+            //data[area_position+1]   = 0;
+            //data[area_position+2]   = 255;
+
+            unsigned char brightness_max = 0;
+            unsigned char brightness_min = 255;
+            int brightness_summ = 0;
+            int brightness_count = 0;
+
+            /*
+            Замеряем характеристику данной зоны
+            */
+            for(int x_position = 0; x_position<areaSize_px; x_position++){
+                for(int y_position = 0; y_position<areaSize_px; y_position++){
+                    if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
+                        long pixel_position = area_position + x_position*3 + y_position*3*data_width;
+
+                        unsigned char gray_value = (data[pixel_position] + data[pixel_position+1] + data[pixel_position+2])/3;
+                        if(brightness_max<gray_value) brightness_max = gray_value;
+                        if(brightness_min>gray_value) brightness_min = gray_value;
+
+                        brightness_summ += gray_value;
+                        brightness_count ++;
+                    }
+                }   
+            }
+
+            /*
+            Если разница светлых и темных участков не достаточно большая, то берестя средний цвет с прошлой зоны
+            */
+            if(brightness_max-brightness_min>min_blackWhiteDifference) brightness_avr = brightness_summ / brightness_count;
+
+            /*
+            Переводим в черный или белый цвет пиксели с учетом рассчетов
+            */
+            for(int x_position = 0; x_position<areaSize_px; x_position++){
+                for(int y_position = 0; y_position<areaSize_px; y_position++){
+                    if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
+                        long pixel_position = area_position + x_position*3 + y_position*3*data_width;
+                        unsigned char gray_value = (data[pixel_position] + data[pixel_position+1] + data[pixel_position+2])/3;
+
+                        if(gray_value<brightness_avr){
+                            data[pixel_position]    = 0;
+                            data[pixel_position+1]  = 0;
+                            data[pixel_position+2]  = 0;
+                        }else{
+                            data[pixel_position]    = 255;
+                            data[pixel_position+1]  = 255;
+                            data[pixel_position+2]  = 255;
+                        }
+                    }
+                }   
+            }
+
+        }
+    }
+
+}
+
+// Обводим контур объектов
+void draw_object_circuits(unsigned char* data, int start_x, int start_y, bool obj_black){
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    char direction = 2;
+
+    bool continue_loop = true;
+    
+    int x = start_x;
+    int y = start_y;
+
+    //Первый пиксель еще белый
+
+    long watchdog = 0;
+
+    while (continue_loop){
+
+        watchdog++;
+        if(watchdog>1000) break;
+
+        set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+        char check_direction = direction - 1;
+        if(check_direction<1) check_direction = 4;
+
+        for(unsigned char i=0; i<4; i++){
+            
+            unsigned char r = 0;
+            unsigned char g = 0;
+            unsigned char b = 0;
+
+            int check_x = x;
+            int check_y = y;
+
+            if(check_direction==1){
+                check_x++;
+            }else if(check_direction==2){
+                check_y--;
+            }else if(check_direction==3){
+                check_x--;
+            }else if(check_direction==4){
+                check_y++;
+            }
+
+            get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
+
+            if(g==255 || r==255){
+                x = check_x;
+                y = check_y;
+
+                direction = check_direction;
+
+                break;
+            }
+
+            check_direction ++;
+            if(check_direction>4)check_direction=1;
+        }
+
+        if(x>data_width || x<0) continue_loop = false;
+        if(y>data_height || y<0) continue_loop = false;
+
+        if(x==start_x && y==start_y){
+            continue_loop = false;
+        }
+
+        if(continue_loop==false){
+            printf("End cicle \n");
+        }
+    }
+
+}
+
+// Находит объекты по контуру
+// Data должно быть четко черно-белое, без градиентов серого
+void detect_objects(unsigned char* data){
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+
+    //Используем зеленный для детектирования цветов
+    unsigned char last_r;
+    unsigned char last_g;
+    unsigned char last_b;
+
+    for(int y=0; y<data_width; y++){
+        for(int x=0; x<data_width; x++){
+
+            unsigned char r;
+            unsigned char g;
+            unsigned char b;
+
+            get_pixel_rgb(data, data_width, data_height, x, y, r, g, b);
+
+            if(last_r==255 && last_g==255 && last_b==255 && r==0 && g==0 && b==0){
+                //set_pixel_rgb(data, data_width, data_height, x-1, y, 255, 0, 0);
+                draw_object_circuits(data, x-1, y, true);
+            }
+
+            last_r = r;
+            last_g = g;
+            last_b = b;
+        }
+    }
+
+}
+
+
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -347,21 +547,41 @@ void filter_contrast(unsigned char* data, int contrast){
 */
 
 
-
 void cv_applyFilters(unsigned char* data){
 
-
+    filter_blur_filter(
+        data, 
+        4              // Количество циклов размытия
+    );
+    
     filter_blackWhite(
         data, 
-        165             // Яркость 0..255
+        200             // Яркость 0..255
     );
 
+    detect_objects(data);
+
+   /*
+    filter_blackWhite_centralAreaWieght(
+        data, 
+        120,             // Ширина и высота зона замера контраста
+        180              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
+    */
+
     /*
+
+    // Бинарное цетрально взвешенное значение
+    filter_blackWhite_centralAreaWieght(
+        data, 
+        80,             // Ширина и высота зона замера контраста
+        40              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
 
     // Изменение контраста
     filter_contrast(
         data, 
-        120   //  -0..1000
+        120   //  100 - без изменения, 0..1000
     );
 
     // Изменение яркости
