@@ -1,7 +1,26 @@
 #define bmp_header_size     54
 
+
+#ifndef arduino_device
+    #include <math.h>
+
+    void console_print(char* out){
+        printf(out);
+        printf("\n");
+    }
+
+    void console_print(long out){
+        printf("%d", out);
+        printf("\n");
+    }
+
+    void on_object_found(int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y);
+    void on_width_got(int width, int width_max, int width_min);
+#endif
+
 static unsigned char color_red[]    =  {    255,    0,      0       };
 static unsigned char color_green[]  =  {    0,      255,    0       };
+static unsigned char color_blue[]   =  {    0,      0,      255     };
 static unsigned char color_black[]  =  {    0,      0,      0       };
 static unsigned char color_white[]  =  {    255,    255,    255     };
 
@@ -13,11 +32,13 @@ static unsigned char color_white[]  =  {    255,    255,    255     };
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
-#define fmin(X,Y) ((X) < (Y) ? (X) : (Y))
-#define fmax(X,Y) ((X) > (Y) ? (X) : (Y))
+#define fmin(X,Y) ((X) < (Y) ?  (X) : (Y))
+#define fmax(X,Y) ((X) > (Y) ?  (X) : (Y))
+#define abs(X)    ((X) < (0) ? -(X) : (X))
 
 #define min_f(a, b, c)  (fmin(a, fmin(b, c)))
 #define max_f(a, b, c)  (fmax(a, fmax(b, c)))
+
 
 
 void rgb2hsv(const unsigned char &src_r, const unsigned char &src_g, const unsigned char &src_b, unsigned int &dst_h, unsigned char &dst_s, unsigned char &dst_v){
@@ -287,7 +308,7 @@ void filter_toGray(unsigned char* data, bool r, bool g, bool b){
 void filter_toGray(unsigned char* data){filter_toGray(data, true, true, true);}
 
 // Удалить спектр с изображения
-void filter_clearSpectr(unsigned char* data, bool r, bool g, bool b){
+void filter_clearSpectr(unsigned char* data, bool r, bool g, bool b, bool toWhite){
 
   int data_width = getWidth(data);
   int data_height = getHeight(data);
@@ -296,9 +317,9 @@ void filter_clearSpectr(unsigned char* data, bool r, bool g, bool b){
 
     long pixel_position = bmp_header_size + i*3;
       
-    if(b) data[pixel_position]     = 0;
-    if(g) data[pixel_position + 1] = 0;
-    if(r) data[pixel_position + 2] = 0;
+    if(b) data[pixel_position]     = toWhite*255;
+    if(g) data[pixel_position + 1] = toWhite*255;
+    if(r) data[pixel_position + 2] = toWhite*255;
     
   }
 }
@@ -426,8 +447,30 @@ void filter_blackWhite_centralAreaWieght(unsigned char* data, int areaSize_px, u
 
 }
 
+//Заменим старый цвет на новый
+void changeColor(unsigned char* data, unsigned char* color_old, unsigned char* color_new){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    for(long i=0; i<data_width*data_height; i++){
+
+        long pixel_position = bmp_header_size + i*3;
+        
+        if(
+            data[pixel_position]     == color_old[2]    &&
+            data[pixel_position + 1] == color_old[1]    &&
+            data[pixel_position + 2] == color_old[0]
+        ){
+            data[pixel_position]     = color_new[2];
+            data[pixel_position + 1] = color_new[1];
+            data[pixel_position + 2] = color_new[0];
+        }
+        
+    }
+}
+
 // Обводим контур объектов
-void draw_object_circuits(unsigned char* data, int start_x, int start_y, bool obj_black){
+void detect_object_circuits(unsigned char* data, int start_x, int start_y){
 
     int data_width = getWidth(data);
     int data_height = getHeight(data);
@@ -441,17 +484,33 @@ void draw_object_circuits(unsigned char* data, int start_x, int start_y, bool ob
 
     //Первый пиксель еще белый
 
-    long watchdog = 0;
+    //long watchdog = 0;
+
+    // Замеряем характеристики области
+    int max_x = 0;
+    int min_x = data_width;
+    int max_y = 0;
+    int min_y = data_height;
+    long length = 0;
 
     while (continue_loop){
 
+        length++;
+
+        /*
         watchdog++;
         if(watchdog>1000) break;
+        */
 
         set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
 
         char check_direction = direction - 1;
         if(check_direction<1) check_direction = 4;
+
+        if(x>max_x) max_x = x;
+        if(y>max_y) max_y = y;
+        if(x<min_x) min_x = x;
+        if(y<min_y) min_y = y;
 
         for(unsigned char i=0; i<4; i++){
             
@@ -494,10 +553,19 @@ void draw_object_circuits(unsigned char* data, int start_x, int start_y, bool ob
             continue_loop = false;
         }
 
+        /*
         if(continue_loop==false){
-            printf("End cicle \n");
         }
+        */
     }
+
+    int center_x = (min_x + max_x)/2;
+    int center_y = (min_y + max_y)/2;
+
+    on_object_found(center_x, center_y, length, max_x, max_y, min_x, min_y, start_x, start_y);
+
+    //Заменим текуший цвет временно на синий (цвет найденного контура)
+    changeColor(data, color_red, color_blue);
 
 }
 
@@ -524,8 +592,9 @@ void detect_objects(unsigned char* data){
             get_pixel_rgb(data, data_width, data_height, x, y, r, g, b);
 
             if(last_r==255 && last_g==255 && last_b==255 && r==0 && g==0 && b==0){
-                //set_pixel_rgb(data, data_width, data_height, x-1, y, 255, 0, 0);
-                draw_object_circuits(data, x-1, y, true);
+                
+                detect_object_circuits(data, x-1, y);
+
             }
 
             last_r = r;
@@ -534,9 +603,137 @@ void detect_objects(unsigned char* data){
         }
     }
 
+    //Вернем цвета
+    changeColor(data, color_blue, color_white);
+
 }
 
+// Измеряет ширину или высоту объекта.
+// Работает только с черно белым изображением, белым фоном
+void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool drawLines){
 
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    int width_max = 0; 
+    int width_min = data_width; 
+    int width_avr = 0; 
+    long width_sum = 0;
+    int width_sum_cycles = 0;
+
+    int step;
+    int stepper_max;
+    int line_max;
+    if(isHorizontal){
+        step            = data_height/cycles;
+        stepper_max     = data_height;
+        line_max        = data_width;
+    }else{
+        step            = data_width/cycles;
+        stepper_max     = data_width;
+        line_max        = data_height;
+    } 
+    if(step==0) step = 1;
+    
+    
+    int start_obj_old   = -1;
+    int end_obj_old     = -1;
+
+    for(int stepper = 0; stepper<stepper_max; stepper+=step){
+
+        unsigned char r_old = 0;
+        unsigned char g_old = 0;
+        unsigned char b_old = 0;
+
+        int start_obj       = -1;
+        int end_obj         = -1;
+
+        // Проверим каждый пиксель линии
+        for(int line_point=0; line_point<line_max; line_point++){
+            unsigned char r;
+            unsigned char g;
+            unsigned char b;
+
+            if(isHorizontal){
+                get_pixel_rgb(data, data_width, data_height, line_point, stepper, r, g, b);
+            }else{
+                get_pixel_rgb(data, data_width, data_height, stepper, line_point, r, g, b);
+            }
+
+            if(start_obj==-1){
+                if(r==0 && g==0 && b==0   &&   r_old==255 && g_old==255 && b_old==255){
+                    start_obj = line_point;
+                }
+            }else if(end_obj==-1){
+                if(r==255 && g==255 && b==255   &&   r_old==0 && g_old==0 && b_old==0){
+                    end_obj = line_point;
+                    break;
+                }
+            }
+
+            r_old = r;
+            g_old = g;
+            b_old = b;
+
+        }
+
+        if(start_obj==-1 || end_obj==-1){
+            start_obj_old   = -1;
+            end_obj_old     = -1;
+        }else{
+
+            int width = end_obj - start_obj;
+
+            width_sum += end_obj - start_obj;
+            width_sum_cycles ++;
+
+            if(width_max<width) width_max = width;
+            if(width_min>width) width_min = width;
+
+            // Если необходимо расчитать ширину по углу наклона объекта
+            start_obj_old   = start_obj;
+            end_obj_old     = end_obj;
+        }
+
+    }
+
+    on_width_got(width_sum/width_sum_cycles, width_max, width_min);
+}
+
+/*
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #                                   ON RESULT GOT                                   # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+*/
+
+// Вызывается когда найден новый объект для более детального разбора
+void on_object_found(int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y){
+    console_print("Object detected");
+
+    console_print("Perimeter:");
+    console_print(perimeter);
+
+    console_print("Width:");
+    console_print(max_x - min_x);
+
+    console_print("Height:");
+    console_print(max_y - min_y);
+
+    console_print("");
+
+}
+
+// Вызывается когда найденa ширина объекта для более детального разбора
+void on_width_got(int width, int width_max, int width_min){
+    console_print("Width:");
+    console_print(width);
+    console_print("Width max:");
+    console_print(width_max);
+    console_print("Width min:");
+    console_print(width_min);
+}
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -548,28 +745,62 @@ void detect_objects(unsigned char* data){
 
 
 void cv_applyFilters(unsigned char* data){
-
+    
+    
     filter_blur_filter(
         data, 
-        4              // Количество циклов размытия
+        5              // Количество циклов размытия
     );
-    
+
     filter_blackWhite(
         data, 
         200             // Яркость 0..255
     );
+    
 
-    detect_objects(data);
+    // Измеряет ширину или высоту объекта.
+    // Работает только с черно белым изображением, белым фоном
+    get_object_width(
+        data,           // unsigned char* - 24 bit bmp массив с черно белым изображением без оттенков серого
+        false,          // true - горизонтальные линии замера, false - вертикальные линии замера
+        10,             // [1..data_width/2] - количество циклов замеров 
+        true            // true - рисовать на результирующем рисунке линии замеров
+    );
+
+
+    /*
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # #                                      EXAMPLES                                     # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    */
+
 
    /*
+
+    // Измеряет ширину или высоту объекта.
+    // Работает только с черно белым изображением, белым фоном
+    get_object_width(
+        data,           // unsigned char* - 24 bit bmp массив с черно белым изображением без оттенков серого
+        false,          // true - замер будет по горизонтали, false - по вертикали
+        10,             // [1..data_width/2] - количество циклов замеров 
+        true            // true - рисовать на результирующем рисунке линии замеров
+    );
+
+
     filter_blackWhite_centralAreaWieght(
         data, 
         120,             // Ширина и высота зона замера контраста
         180              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
     );
-    */
 
-    /*
+    // Просто заменяет один цвет на другой
+    changeColor(
+        data, 
+        color_old,      // int[r,g,b] - цвет, который необходимо заменить
+        color_new       // int[r,g,b] - цвет, на который необходимо заменить
+    );
 
     // Бинарное цетрально взвешенное значение
     filter_blackWhite_centralAreaWieght(
@@ -593,9 +824,10 @@ void cv_applyFilters(unsigned char* data){
     // Очищает выбранный спектр
     filter_clearSpectr(
         data, 
-        1,  // Очистить красный спектр 0..1
-        0,  // Очистить зеленвй спектр 0..1
-        0   // Очистить синий спектр 0..1
+        1,      // Очистить красный спектр 0..1
+        0,      // Очистить зеленвй спектр 0..1
+        0,      // Очистить синий спектр 0..1
+        true    // false - превращает в черный, true - в белый
     );
 
     filter_toGray(data);    // Перевести картинку в оттенки серого
