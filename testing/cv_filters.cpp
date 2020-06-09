@@ -3,6 +3,8 @@
 
 #ifndef arduino_device
     #include <math.h>
+    #include "cv_drawing.cpp"
+    #include "cv_shared_functions.cpp"
 
     void console_print(char* out){
         printf(out);
@@ -14,15 +16,33 @@
         printf("\n");
     }
 
-    void on_object_found(int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y);
-    void on_width_got(int width, int width_max, int width_min);
+    void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type);
+    void on_width_got(unsigned char* data, int width, int width_max, int width_min);
 #endif
 
-static unsigned char color_red[]    =  {    255,    0,      0       };
-static unsigned char color_green[]  =  {    0,      255,    0       };
-static unsigned char color_blue[]   =  {    0,      0,      255     };
-static unsigned char color_black[]  =  {    0,      0,      0       };
-static unsigned char color_white[]  =  {    255,    255,    255     };
+
+
+static unsigned char color_red[]        =  {    255,    0,      0       };
+static unsigned char color_green[]      =  {    0,      255,    0       };
+static unsigned char color_blue[]       =  {    0,      0,      255     };
+static unsigned char color_black[]      =  {    0,      0,      0       };
+static unsigned char color_white[]      =  {    255,    255,    255     };
+static unsigned char color_gray[]       =  {    127,    127,    127     };
+static unsigned char color_lightgray[]  =  {    192,    192,    192     };
+static unsigned char color_darkgray[]   =  {    64,     64,     64      };
+
+
+/*
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #                               OBJECT DETECTION TYPES                              # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+*/
+
+#define ANY_OBJECT 0x0001
+
+#define EXAMPLE_CLOCK 0xFF01
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -83,35 +103,6 @@ void hsv2rgb(const unsigned int &src_h, const unsigned char &src_s, const unsign
     dst_b = (unsigned char)(b * 255); // dst_r : 0-255
 }
 
-////////////////////////
-
-int getWidth(unsigned char* data){
-    int width = *(int*)&data[18];
-    if(width<0) width *= -1;
-    return width;
-}
-
-int getHeight(unsigned char* data){
-    int height = *(int*)&data[22];
-    if(height<0) height *= -1;
-    return height;
-}
-
-void get_pixel_rgb(unsigned char* data, int width, int height, int x, int y, unsigned char &r, unsigned char &g, unsigned char &b){
-    long pixel_position = bmp_header_size + x*3 + y*3*width;
-
-    b = data[pixel_position];
-    g = data[pixel_position + 1];
-    r = data[pixel_position + 2];
-}
-
-void set_pixel_rgb(unsigned char* data, int width, int height, int x, int y, unsigned char r, unsigned char g, unsigned char b){
-    long pixel_position = bmp_header_size + x*3 + y*3*width;
-
-    data[pixel_position]        = b;
-    data[pixel_position + 1]    = g;
-    data[pixel_position + 2]    = r;
-}
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -120,7 +111,6 @@ void set_pixel_rgb(unsigned char* data, int width, int height, int x, int y, uns
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
-
 
 // Закрасить цвет входящий или не входящий в диапазон hsv
 void filter_color_hsv(
@@ -470,7 +460,7 @@ void changeColor(unsigned char* data, unsigned char* color_old, unsigned char* c
 }
 
 // Обводим контур объектов
-void detect_object_circuits(unsigned char* data, int start_x, int start_y){
+void detect_object_circuits(unsigned char* data, int start_x, int start_y, int obj_detection_type){
 
     int data_width = getWidth(data);
     int data_height = getHeight(data);
@@ -562,7 +552,7 @@ void detect_object_circuits(unsigned char* data, int start_x, int start_y){
     int center_x = (min_x + max_x)/2;
     int center_y = (min_y + max_y)/2;
 
-    on_object_found(center_x, center_y, length, max_x, max_y, min_x, min_y, start_x, start_y);
+    on_object_found(data, center_x, center_y, length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     //Заменим текуший цвет временно на синий (цвет найденного контура)
     changeColor(data, color_red, color_blue);
@@ -571,7 +561,7 @@ void detect_object_circuits(unsigned char* data, int start_x, int start_y){
 
 // Находит объекты по контуру
 // Data должно быть четко черно-белое, без градиентов серого
-void detect_objects(unsigned char* data){
+void detect_objects(unsigned char* data, int obj_detection_type){
 
     int data_width = getWidth(data);
     int data_height = getHeight(data);
@@ -593,7 +583,7 @@ void detect_objects(unsigned char* data){
 
             if(last_r==255 && last_g==255 && last_b==255 && r==0 && g==0 && b==0){
                 
-                detect_object_circuits(data, x-1, y);
+                detect_object_circuits(data, x-1, y, obj_detection_type);
 
             }
 
@@ -610,7 +600,7 @@ void detect_objects(unsigned char* data){
 
 // Измеряет ширину или высоту объекта.
 // Работает только с черно белым изображением, белым фоном
-void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool drawLines){
+void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool drawResult){
 
     int data_width = getWidth(data);
     int data_height = getHeight(data);
@@ -639,7 +629,7 @@ void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool d
     int start_obj_old   = -1;
     int end_obj_old     = -1;
 
-    for(int stepper = 0; stepper<stepper_max; stepper+=step){
+    for(int stepper = step/2; stepper<stepper_max; stepper+=step){
 
         unsigned char r_old = 0;
         unsigned char g_old = 0;
@@ -693,11 +683,34 @@ void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool d
             // Если необходимо расчитать ширину по углу наклона объекта
             start_obj_old   = start_obj;
             end_obj_old     = end_obj;
+
+            if(drawResult){
+                if(isHorizontal){
+                    drawLine(data, data_width, data_height, color_blue, 0, stepper, start_obj, stepper);
+                    drawLine(data, data_width, data_height, color_blue, data_width, stepper, end_obj, stepper);
+
+                    drawLine(data, data_width, data_height, color_blue, end_obj, stepper+10, end_obj, stepper-10);
+                    drawLine(data, data_width, data_height, color_blue, start_obj, stepper+10, start_obj, stepper-10);
+
+                    drawString(data, data_width, data_height, color_lightgray, width, (end_obj+start_obj)/2-12, stepper-6, 2);
+
+                }else{
+                    drawLine(data, data_width, data_height, color_blue, stepper, 0, stepper, start_obj);
+                    drawLine(data, data_width, data_height, color_blue, stepper, data_height, stepper, end_obj);
+                    
+                    drawLine(data, data_width, data_height, color_blue, stepper+10, start_obj, stepper-10, start_obj);
+                    drawLine(data, data_width, data_height, color_blue, stepper+10, end_obj, stepper-10, end_obj);
+
+                    drawString(data, data_width, data_height, color_lightgray, width, stepper-12, (end_obj+start_obj)/2-6, 2);
+
+                }
+            }
+            
         }
 
     }
 
-    on_width_got(width_sum/width_sum_cycles, width_max, width_min);
+    on_width_got(data, width_sum/width_sum_cycles, width_max, width_min);
 }
 
 /*
@@ -709,30 +722,98 @@ void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool d
 */
 
 // Вызывается когда найден новый объект для более детального разбора
-void on_object_found(int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y){
-    console_print("Object detected");
+void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
-    console_print("Perimeter:");
-    console_print(perimeter);
+    if(obj_detection_type==EXAMPLE_CLOCK){
 
-    console_print("Width:");
-    console_print(max_x - min_x);
+        int data_width = getWidth(data);
+        int data_height = getHeight(data);
 
-    console_print("Height:");
-    console_print(max_y - min_y);
+        if(perimeter>100 && perimeter<200){
+            console_print("Found hour hand");
 
-    console_print("");
+            bool x_pos = ((max_x + min_x)/2>data_width/2);
+            bool y_pos = ((max_y + min_y)/2>data_height/2);
+
+            if(x_pos && !y_pos){
+                // 0-3 hours
+                console_print("quarter 1"); 
+
+            }else if(x_pos && y_pos){
+                // 3-6 hours
+                console_print("quarter 2");    
+
+            }else if(!x_pos && y_pos){
+                // 6-9 hours
+                console_print("quarter 3");    
+
+            }else if(!x_pos && !y_pos){
+                // 9-12 hours
+                console_print("quarter 4");
+
+            }
+
+            drawString(data, data_width, data_height, color_darkgray, 10, 30, 32, 3);
+            console_print("");
+
+        }else if(perimeter>200 && perimeter<300){
+            console_print("Found minute hand");
+
+            bool x_pos = ((max_x + min_x)/2>data_width/2);
+            bool y_pos = ((max_y + min_y)/2>data_height/2);
+
+            if(x_pos && !y_pos){
+                //0-15 min
+                console_print("quarter 1");    
+
+            }else if(x_pos && y_pos){
+                //15-30 min
+                console_print("quarter 2");    
+
+            }else if(!x_pos && y_pos){
+                //30-45 min
+                console_print("quarter 3");    
+
+            }else if(!x_pos && !y_pos){
+                //45-60 min
+                console_print("quarter 4");
+
+            }
+
+            drawString(data, data_width, data_height, color_darkgray, ":", 68, 32, 3);
+            drawString(data, data_width, data_height, color_darkgray, 38, 84, 32, 3);
+
+        }else{
+            // Other object found
+        }
+
+
+    }else{
+
+        console_print("Object detected");
+        console_print("Perimeter:");
+        console_print(perimeter);
+        console_print("Width:");
+        console_print(max_x - min_x);
+        console_print("Height:");
+        console_print(max_y - min_y);
+        console_print("");
+
+    }
 
 }
 
 // Вызывается когда найденa ширина объекта для более детального разбора
-void on_width_got(int width, int width_max, int width_min){
+void on_width_got(unsigned char* data, int obj_width, int obj_width_max, int obj_width_min){
     console_print("Width:");
-    console_print(width);
+    console_print(obj_width);
     console_print("Width max:");
-    console_print(width_max);
+    console_print(obj_width_max);
     console_print("Width min:");
-    console_print(width_min);
+    console_print(obj_width_min);
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
 }
 
 /*
@@ -754,19 +835,21 @@ void cv_applyFilters(unsigned char* data){
 
     filter_blackWhite(
         data, 
-        200             // Яркость 0..255
-    );
-    
-
-    // Измеряет ширину или высоту объекта.
-    // Работает только с черно белым изображением, белым фоном
-    get_object_width(
-        data,           // unsigned char* - 24 bit bmp массив с черно белым изображением без оттенков серого
-        false,          // true - горизонтальные линии замера, false - вертикальные линии замера
-        10,             // [1..data_width/2] - количество циклов замеров 
-        true            // true - рисовать на результирующем рисунке линии замеров
+        127             // Яркость 0..255
     );
 
+    filter_inverse(data);
+
+    detect_objects(
+        data,
+        EXAMPLE_CLOCK   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+
+    changeColor(
+        data, 
+        color_darkgray,  // int[r,g,b] - цвет, который необходимо заменить
+        color_red        // int[r,g,b] - цвет, на который необходимо заменить
+    );
 
     /*
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -779,11 +862,17 @@ void cv_applyFilters(unsigned char* data){
 
    /*
 
+    // Определяет объекты
+    void detect_objects(
+        data,
+        ANY_OBJECT // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+
     // Измеряет ширину или высоту объекта.
     // Работает только с черно белым изображением, белым фоном
     get_object_width(
         data,           // unsigned char* - 24 bit bmp массив с черно белым изображением без оттенков серого
-        false,          // true - замер будет по горизонтали, false - по вертикали
+        false,          // true - горизонтальные линии замера, false - вертикальные линии замера
         10,             // [1..data_width/2] - количество циклов замеров 
         true            // true - рисовать на результирующем рисунке линии замеров
     );
