@@ -42,7 +42,9 @@ static unsigned char color_darkgray[]   =  {    64,     64,     64      };
 
 #define ANY_OBJECT 0x0001
 
-#define EXAMPLE_CLOCK 0xFF01
+#define EXAMPLE_CLOCK           0xFF01
+#define EXAMPLE_SINGLE_OBJECT   0xFF02
+#define EXAMPLE_FIND_OBJECTS    0xFF03
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -721,6 +723,8 @@ void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool d
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
+int total_objects = 0;
+
 // Вызывается когда найден новый объект для более детального разбора
 void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
@@ -729,64 +733,92 @@ void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_
         int data_width = getWidth(data);
         int data_height = getHeight(data);
 
+        int obj_height = max_x - min_x;
+        int obj_width = max_y - min_y;
+
+        bool x_pos = ((max_x + min_x)/2>data_width/2);
+        bool y_pos = ((max_y + min_y)/2>data_height/2);
+
+        int angle = atan(((float)obj_height)/((float)obj_width))*180.0/3.1415926535;
+        if(x_pos && !y_pos){
+            // quarter 1
+        }else if(x_pos && y_pos){
+            // quarter 2
+            angle+=90;
+        }else if(!x_pos && y_pos){
+            // quarter 3
+            angle+=180;
+        }else if(!x_pos && !y_pos){
+            // quarter 4
+            angle+=270;
+        }
+
+
         if(perimeter>100 && perimeter<200){
             console_print("Found hour hand");
 
-            bool x_pos = ((max_x + min_x)/2>data_width/2);
-            bool y_pos = ((max_y + min_y)/2>data_height/2);
+            int hours = 12*angle/360;
 
-            if(x_pos && !y_pos){
-                // 0-3 hours
-                console_print("quarter 1"); 
-
-            }else if(x_pos && y_pos){
-                // 3-6 hours
-                console_print("quarter 2");    
-
-            }else if(!x_pos && y_pos){
-                // 6-9 hours
-                console_print("quarter 3");    
-
-            }else if(!x_pos && !y_pos){
-                // 9-12 hours
-                console_print("quarter 4");
-
-            }
-
-            drawString(data, data_width, data_height, color_darkgray, 10, 30, 32, 3);
+            drawString(data, data_width, data_height, color_darkgray, hours, 5*6*1, 32, 5);
             console_print("");
 
         }else if(perimeter>200 && perimeter<300){
             console_print("Found minute hand");
 
-            bool x_pos = ((max_x + min_x)/2>data_width/2);
-            bool y_pos = ((max_y + min_y)/2>data_height/2);
+            int minutes = 60*angle/360;
 
-            if(x_pos && !y_pos){
-                //0-15 min
-                console_print("quarter 1");    
-
-            }else if(x_pos && y_pos){
-                //15-30 min
-                console_print("quarter 2");    
-
-            }else if(!x_pos && y_pos){
-                //30-45 min
-                console_print("quarter 3");    
-
-            }else if(!x_pos && !y_pos){
-                //45-60 min
-                console_print("quarter 4");
-
-            }
-
-            drawString(data, data_width, data_height, color_darkgray, ":", 68, 32, 3);
-            drawString(data, data_width, data_height, color_darkgray, 38, 84, 32, 3);
+            drawString(data, data_width, data_height, color_darkgray, ":", 5*6*3, 32, 5);
+            drawString(data, data_width, data_height, color_darkgray, minutes, 5*6*4, 32, 5);
 
         }else{
             // Other object found
         }
 
+
+    }if(obj_detection_type==EXAMPLE_SINGLE_OBJECT){
+
+        int data_width = getWidth(data);
+        int data_height = getHeight(data);
+
+        int x_pos = (max_x + min_x)/2;
+        int y_pos = (max_y + min_y)/2;
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+
+        console_print("Object found");
+        console_print("x:");
+        console_print(x_pos);
+        console_print("y:");
+        console_print(y_pos);
+
+    }if(obj_detection_type==EXAMPLE_FIND_OBJECTS){
+
+        if(perimeter>50){
+            int data_width = getWidth(data);
+            int data_height = getHeight(data);
+
+            int x_pos = (max_x + min_x)/2;
+            int y_pos = (max_y + min_y)/2;
+
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos, x_pos+5, y_pos);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos+1, x_pos+5, y_pos+1);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos-1, x_pos+5, y_pos-1);
+
+            drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-5, x_pos, y_pos+5);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-5, x_pos+1, y_pos+5);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-5, x_pos-1, y_pos+5);
+
+            total_objects ++;
+
+            drawString(data, data_width, data_height, color_darkgray, total_objects, x_pos-42, y_pos - 10, 3);
+        }
+        
 
     }else{
 
@@ -824,32 +856,19 @@ void on_width_got(unsigned char* data, int obj_width, int obj_width_max, int obj
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
+// predefinition of example functions
+void example_get_watch_time     (unsigned char* data);
+void example_find_color_object  (unsigned char* data);
+void example_count_objects      (unsigned char* data);
+void example_get_object_width   (unsigned char* data);
 
 void cv_applyFilters(unsigned char* data){
     
+    example_get_object_width     (data);     // images/objects/14.bmp
+    // example_count_objects        (data);     // images/objects/7.bmp
+    // example_find_color_object    (data);     // images/objects/1.bmp
+    // example_get_watch_time       (data);     // images/objects/18.bmp
     
-    filter_blur_filter(
-        data, 
-        5              // Количество циклов размытия
-    );
-
-    filter_blackWhite(
-        data, 
-        127             // Яркость 0..255
-    );
-
-    filter_inverse(data);
-
-    detect_objects(
-        data,
-        EXAMPLE_CLOCK   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
-    );
-
-    changeColor(
-        data, 
-        color_darkgray,  // int[r,g,b] - цвет, который необходимо заменить
-        color_red        // int[r,g,b] - цвет, на который необходимо заменить
-    );
 
     /*
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -889,13 +908,6 @@ void cv_applyFilters(unsigned char* data){
         data, 
         color_old,      // int[r,g,b] - цвет, который необходимо заменить
         color_new       // int[r,g,b] - цвет, на который необходимо заменить
-    );
-
-    // Бинарное цетрально взвешенное значение
-    filter_blackWhite_centralAreaWieght(
-        data, 
-        80,             // Ширина и высота зона замера контраста
-        40              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
     );
 
     // Изменение контраста
@@ -957,5 +969,118 @@ void cv_applyFilters(unsigned char* data){
 
     */
 
+
+}
+
+void example_get_object_width(unsigned char* data){
+
+    filter_blur_filter(
+        data, 
+        5              // Количество циклов размытия
+    );
+    
+    filter_blackWhite(
+        data, 
+        200             // Яркость 0..255
+    );
+
+    // Измеряет ширину или высоту объекта.
+    // Работает только с черно белым изображением, белым фоном
+    get_object_width(
+        data,           // unsigned char* - 24 bit bmp массив с черно белым изображением без оттенков серого
+        false,          // true - горизонтальные линии замера, false - вертикальные линии замера
+        10,             // [1..data_width/2] - количество циклов замеров 
+        true            // true - рисовать на результирующем рисунке линии замеров
+    );
+
+    changeColor(
+        data, 
+        color_blue,     // int[r,g,b] - цвет, который необходимо заменить
+        color_red       // int[r,g,b] - цвет, на который необходимо заменить
+    );
+}
+
+void example_count_objects(unsigned char* data){
+
+    total_objects = 0;
+
+    filter_blur_filter(
+        data, 
+        5              // Количество циклов размытия
+    );
+    
+    filter_blackWhite(
+        data, 
+        200             // Яркость 0..255
+    );
+    
+    detect_objects(
+        data,
+        EXAMPLE_FIND_OBJECTS   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+
+    changeColor(
+        data, 
+        color_darkgray,  // int[r,g,b] - цвет, который необходимо заменить
+        color_red        // int[r,g,b] - цвет, на который необходимо заменить
+    );
+}
+
+void example_find_color_object(unsigned char* data){
+
+    filter_blur_filter(
+        data, 
+        5              // Количество циклов размытия
+    );
+    
+    // Фильтр по hsv
+    filter_color_hsv(
+        data, 
+        350, 380,       // h 0..360 (можно указывать на 180 больше 380, если в диапозон должно попасть 0..180)
+        20, 100,        // s 0..100
+        30, 75,         // v 0..100
+        color_black,    // int[r,g,b] - цвет, который заполяется область в случае, если цвет подходит условиям
+        color_white,    // int[r,g,b] - цвет, который заполяется область в случае, если цвет не подходит условиям
+        true,           // Закрашивать цветом, если условие фильтра выполняется
+        true            // Закрашивать цветом, если условие фильтра не выполняется
+    );
+
+    detect_objects(
+        data,
+        EXAMPLE_SINGLE_OBJECT   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+
+    changeColor(
+        data, 
+        color_darkgray,  // int[r,g,b] - цвет, который необходимо заменить
+        color_red        // int[r,g,b] - цвет, на который необходимо заменить
+    );
+}
+
+void example_get_watch_time(unsigned char* data){
+
+    filter_blur_filter(
+        data, 
+        5              // Количество циклов размытия
+    );
+
+
+    filter_blackWhite(
+        data, 
+        127             // Яркость 0..255
+    );
+
+    filter_inverse(data);
+
+    detect_objects(
+        data,
+        EXAMPLE_CLOCK   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+
+    changeColor(
+        data, 
+        color_darkgray,  // int[r,g,b] - цвет, который необходимо заменить
+        color_red        // int[r,g,b] - цвет, на который необходимо заменить
+    );
 
 }

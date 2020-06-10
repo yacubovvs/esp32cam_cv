@@ -11,7 +11,8 @@
                 "-g",
                 "main.cpp",
                 "-o",
-                "main"
+                "main",
+                "-lm",
             ],
             "problemMatcher": [
                 "$gcc"
