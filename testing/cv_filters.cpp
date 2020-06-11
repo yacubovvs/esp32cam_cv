@@ -848,6 +848,19 @@ void on_width_got(unsigned char* data, int obj_width, int obj_width_max, int obj
     int data_height = getHeight(data);
 }
 
+void gradient_gray_filter(unsigned char* data){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    for(int x=1; x<data_width-1; x++){
+        for(int y=1; y<data_height-1; y++){
+
+            /*
+            */
+        }
+    }
+}
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -864,10 +877,8 @@ void example_get_object_width   (unsigned char* data);
 
 void cv_applyFilters(unsigned char* data){
     
-    example_get_object_width     (data);     // images/objects/14.bmp
-    // example_count_objects        (data);     // images/objects/7.bmp
-    // example_find_color_object    (data);     // images/objects/1.bmp
-    // example_get_watch_time       (data);     // images/objects/18.bmp
+    // Изменение контраста
+    gradient_gray_filter(data);
     
 
     /*
@@ -878,8 +889,13 @@ void cv_applyFilters(unsigned char* data){
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     */
 
+    // example_get_object_width     (data);     // images/objects/14.bmp
+    // example_count_objects        (data);     // images/objects/7.bmp
+    // example_find_color_object    (data);     // images/objects/1.bmp
+    // example_get_watch_time       (data);     // images/objects/18.bmp
 
-   /*
+
+    /*
 
     // Определяет объекты
     void detect_objects(
@@ -895,7 +911,6 @@ void cv_applyFilters(unsigned char* data){
         10,             // [1..data_width/2] - количество циклов замеров 
         true            // true - рисовать на результирующем рисунке линии замеров
     );
-
 
     filter_blackWhite_centralAreaWieght(
         data, 
