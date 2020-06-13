@@ -341,7 +341,7 @@ void filter_brightness(unsigned char* data, int brightness){
   }
 }
 
-// Изменение яркости
+// Изменение Контраста
 void filter_contrast(unsigned char* data, int contrast){
 
   int data_width = getWidth(data);
@@ -410,7 +410,10 @@ void filter_blackWhite_centralAreaWieght(unsigned char* data, int areaSize_px, u
             /*
             Если разница светлых и темных участков не достаточно большая, то берестя средний цвет с прошлой зоны
             */
-            if(brightness_max-brightness_min>min_blackWhiteDifference) brightness_avr = brightness_summ / brightness_count;
+            if(brightness_max-brightness_min>min_blackWhiteDifference){
+                //brightness_avr = brightness_summ / brightness_count;
+                brightness_avr = (brightness_max + brightness_min)/2;
+            }
 
             /*
             Переводим в черный или белый цвет пиксели с учетом рассчетов
@@ -419,7 +422,7 @@ void filter_blackWhite_centralAreaWieght(unsigned char* data, int areaSize_px, u
                 for(int y_position = 0; y_position<areaSize_px; y_position++){
                     if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
                         long pixel_position = area_position + x_position*3 + y_position*3*data_width;
-                        unsigned char gray_value = (data[pixel_position] + data[pixel_position+1] + data[pixel_position+2])/3;
+                        unsigned char gray_value = (char)(( (int)data[pixel_position] + (int)data[pixel_position+1] + (int)data[pixel_position+2])/3);
 
                         if(gray_value<brightness_avr){
                             data[pixel_position]    = 0;
@@ -715,6 +718,90 @@ void get_object_width(unsigned char* data, bool isHorizontal, int cycles, bool d
     on_width_got(data, width_sum/width_sum_cycles, width_max, width_min);
 }
 
+// Фильтр контрастных элементов
+void filter_clearNotContrast(unsigned char* data, int areaSize_px, unsigned char min_blackWhiteDifference){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    int arrays_x = data_width/areaSize_px + (data_width%areaSize_px==0?0:1);
+    int arrays_y = data_height/areaSize_px + (data_height%areaSize_px==0?0:1);
+    unsigned char brightness_avr = 127;
+
+    for(int x=0; x<arrays_x; x++){
+        for(int y=0; y<arrays_y; y++){
+
+            long area_position = bmp_header_size + x*3*areaSize_px + y*3*data_width*areaSize_px;
+
+            //data[area_position]     = 0;
+            //data[area_position+1]   = 0;
+            //data[area_position+2]   = 255;
+
+            unsigned char brightness_max = 0;
+            unsigned char brightness_min = 255;
+            int brightness_summ = 0;
+            int brightness_count = 0;
+
+            /*
+            Замеряем характеристику данной зоны
+            */
+            for(int x_position = 0; x_position<areaSize_px; x_position++){
+                for(int y_position = 0; y_position<areaSize_px; y_position++){
+                    if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
+                        long pixel_position = area_position + x_position*3 + y_position*3*data_width;
+
+                        unsigned char gray_value = (data[pixel_position] + data[pixel_position+1] + data[pixel_position+2])/3;
+                        if(brightness_max<gray_value) brightness_max = gray_value;
+                        if(brightness_min>gray_value) brightness_min = gray_value;
+
+                        brightness_summ += gray_value;
+                        brightness_count ++;
+                    }
+                }   
+            }
+
+            
+
+            /*
+            Переводим в черный или белый цвет пиксели с учетом рассчетов
+            */
+            for(int x_position = 0; x_position<areaSize_px; x_position++){
+                for(int y_position = 0; y_position<areaSize_px; y_position++){
+                    if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
+                        long pixel_position = area_position + x_position*3 + y_position*3*data_width;
+
+                        if(brightness_max-brightness_min<min_blackWhiteDifference){
+                            data[pixel_position]    = 255;
+                            data[pixel_position+1]  = 255;
+                            data[pixel_position+2]  = 255;
+                        /*
+                        }else{
+                            char b = data[pixel_position]    = data[pixel_position];
+                            char g = data[pixel_position+1]  = data[pixel_position+1];
+                            char r = data[pixel_position+2]  = data[pixel_position+2];
+
+                            
+                            if((b+g+r)/3>(brightness_max-brightness_min)/2){
+                                data[pixel_position]    = 255;
+                                data[pixel_position+1]  = 255;
+                                data[pixel_position+2]  = 255;
+
+                            }else{
+                                data[pixel_position]    = 0;
+                                data[pixel_position+1]  = 0;
+                                data[pixel_position+2]  = 0;
+                                
+                            }
+                        */
+                        }
+                    }
+                }   
+            }
+
+        }
+    }
+
+}
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -848,19 +935,6 @@ void on_width_got(unsigned char* data, int obj_width, int obj_width_max, int obj
     int data_height = getHeight(data);
 }
 
-void gradient_gray_filter(unsigned char* data){
-    int data_width = getWidth(data);
-    int data_height = getHeight(data);
-
-    for(int x=1; x<data_width-1; x++){
-        for(int y=1; y<data_height-1; y++){
-
-            /*
-            */
-        }
-    }
-}
-
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -877,8 +951,21 @@ void example_get_object_width   (unsigned char* data);
 
 void cv_applyFilters(unsigned char* data){
     
-    // Изменение контраста
-    gradient_gray_filter(data);
+    unsigned char detect_area_size = 30;
+
+    // Очищает не контрастные зоны
+    
+    filter_clearNotContrast(
+        data, 
+        detect_area_size,             // Ширина и высота зона замера контраста
+        60              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
+
+    filter_blackWhite_centralAreaWieght(
+        data, 
+        detect_area_size,             // Ширина и высота зона замера контраста
+        0              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
     
 
     /*
@@ -896,6 +983,13 @@ void cv_applyFilters(unsigned char* data){
 
 
     /*
+
+    // Очищает не контрастные зоны
+    filter_clearNotContrast(
+        data, 
+        15,             // Ширина и высота зона замера контраста
+        30              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
 
     // Определяет объекты
     void detect_objects(
