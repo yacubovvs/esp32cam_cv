@@ -894,7 +894,13 @@ int total_objects = 0;
 // Вызывается когда найден новый объект для более детального разбора
 void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
-    if(obj_detection_type==EXAMPLE_CLOCK){
+    if(obj_detection_type==ANY_OBJECT){
+
+    }else if(obj_detection_type==EXAMPLE_SEARCH_CIRCLES){
+
+
+        
+    }else if(obj_detection_type==EXAMPLE_CLOCK){
 
         int data_width = getWidth(data);
         int data_height = getHeight(data);
@@ -941,7 +947,7 @@ void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_
         }
 
 
-    }if(obj_detection_type==EXAMPLE_SINGLE_OBJECT){
+    }else if(obj_detection_type==EXAMPLE_SINGLE_OBJECT){
 
         int data_width = getWidth(data);
         int data_height = getHeight(data);
@@ -963,7 +969,7 @@ void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_
         console_print("y:");
         console_print(y_pos);
 
-    }if(obj_detection_type==EXAMPLE_SEARCH_OBJECTS){
+    }else if(obj_detection_type==EXAMPLE_SEARCH_OBJECTS){
 
         if(perimeter>50){
             int data_width = getWidth(data);
