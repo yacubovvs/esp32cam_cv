@@ -40,11 +40,12 @@ static unsigned char color_darkgray[]   =  {    64,     64,     64      };
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
-#define ANY_OBJECT 0x0001
+#define ANY_OBJECT                  0x0001
 
-#define EXAMPLE_CLOCK           0xFF01
-#define EXAMPLE_SINGLE_OBJECT   0xFF02
-#define EXAMPLE_FIND_OBJECTS    0xFF03
+#define EXAMPLE_CLOCK               0xFF01
+#define EXAMPLE_SINGLE_OBJECT       0xFF02
+#define EXAMPLE_SEARCH_OBJECTS      0xFF03
+#define EXAMPLE_SEARCH_CIRCLES      0xFF03
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -802,6 +803,84 @@ void filter_clearNotContrast(unsigned char* data, int areaSize_px, unsigned char
 
 }
 
+// Бинарное цетрально взвешенное значение
+void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blackWhiteDifference){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    int arrays_x = data_width/areaSize_px + (data_width%areaSize_px==0?0:1);
+    int arrays_y = data_height/areaSize_px + (data_height%areaSize_px==0?0:1);
+    unsigned char brightness_avr = 127;
+
+    for(int x=0; x<arrays_x; x++){
+        for(int y=0; y<arrays_y; y++){
+
+            long area_position = bmp_header_size + x*3*areaSize_px + y*3*data_width*areaSize_px;
+
+            //data[area_position]     = 0;
+            //data[area_position+1]   = 0;
+            //data[area_position+2]   = 255;
+
+            unsigned char brightness_max = 0;
+            unsigned char brightness_min = 255;
+            int brightness_summ = 0;
+            int brightness_count = 0;
+
+            /*
+            Замеряем характеристику данной зоны
+            */
+            for(int x_position = 0; x_position<areaSize_px; x_position++){
+                for(int y_position = 0; y_position<areaSize_px; y_position++){
+                    if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
+                        long pixel_position = area_position + x_position*3 + y_position*3*data_width;
+
+                        unsigned char gray_value = (data[pixel_position] + data[pixel_position+1] + data[pixel_position+2])/3;
+                        if(brightness_max<gray_value) brightness_max = gray_value;
+                        if(brightness_min>gray_value) brightness_min = gray_value;
+
+                        brightness_summ += gray_value;
+                        brightness_count ++;
+                    }
+                }   
+            }
+
+            /*
+            Если разница светлых и темных участков не достаточно большая, то берестя средний цвет с прошлой зоны
+            */
+            if(brightness_max-brightness_min>min_blackWhiteDifference){
+                //brightness_avr = brightness_summ / brightness_count;
+                brightness_avr = (brightness_max + brightness_min)/2;
+            }else{
+                brightness_avr = 0;
+            }
+
+            /*
+            Переводим в черный или белый цвет пиксели с учетом рассчетов
+            */
+            for(int x_position = 0; x_position<areaSize_px; x_position++){
+                for(int y_position = 0; y_position<areaSize_px; y_position++){
+                    if(x*areaSize_px + x_position < data_width && y*areaSize_px + y_position < data_height){
+                        long pixel_position = area_position + x_position*3 + y_position*3*data_width;
+                        unsigned char gray_value = (char)(( (int)data[pixel_position] + (int)data[pixel_position+1] + (int)data[pixel_position+2])/3);
+
+                        if(gray_value<brightness_avr){
+                            data[pixel_position]    = 0;
+                            data[pixel_position+1]  = 0;
+                            data[pixel_position+2]  = 0;
+                        }else{
+                            data[pixel_position]    = 255;
+                            data[pixel_position+1]  = 255;
+                            data[pixel_position+2]  = 255;
+                        }
+                    }
+                }   
+            }
+
+        }
+    }
+
+}
+
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -884,7 +963,7 @@ void on_object_found(unsigned char* data, int x, int y, long perimeter, int max_
         console_print("y:");
         console_print(y_pos);
 
-    }if(obj_detection_type==EXAMPLE_FIND_OBJECTS){
+    }if(obj_detection_type==EXAMPLE_SEARCH_OBJECTS){
 
         if(perimeter>50){
             int data_width = getWidth(data);
@@ -950,23 +1029,26 @@ void example_count_objects      (unsigned char* data);
 void example_get_object_width   (unsigned char* data);
 
 void cv_applyFilters(unsigned char* data){
-    
-    unsigned char detect_area_size = 30;
 
     // Очищает не контрастные зоны
     
-    filter_clearNotContrast(
+    filter_blur_filter(
         data, 
-        detect_area_size,             // Ширина и высота зона замера контраста
-        60              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
-    );
-
-    filter_blackWhite_centralAreaWieght(
-        data, 
-        detect_area_size,             // Ширина и высота зона замера контраста
-        0              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        5              // Количество циклов размытия
     );
     
+    
+    filter_blackWhite(
+        data, 
+        200             // Яркость 0..255
+    );
+
+
+    // Определяет объекты
+    detect_objects(
+        data,
+        EXAMPLE_SEARCH_CIRCLES // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
 
     /*
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -983,6 +1065,12 @@ void cv_applyFilters(unsigned char* data){
 
 
     /*
+
+    // Поиск возможных штрих кодов на картинке
+    filter_barcode(data, 
+        30,             // Ширина и высота зона замера контраста
+        60              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
 
     // Очищает не контрастные зоны
     filter_clearNotContrast(
@@ -1125,7 +1213,7 @@ void example_count_objects(unsigned char* data){
     
     detect_objects(
         data,
-        EXAMPLE_FIND_OBJECTS   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+        EXAMPLE_SEARCH_OBJECTS   // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
     );
 
     changeColor(
