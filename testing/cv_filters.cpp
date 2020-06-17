@@ -30,6 +30,11 @@ void updateMaxAndMinValue(unsigned int &value, unsigned int &max, unsigned int &
     if(min>value) min = value;
 }
 
+void updateMaxAndMinValue(float &value, float &max, float &min){
+    if(max<value) max = value;
+    if(min>value) min = value;
+}
+
 
 static unsigned char color_red[]        =  {    255,    0,      0       };
 static unsigned char color_green[]      =  {    0,      255,    0       };
@@ -937,12 +942,12 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
             int y = start_y;
 
             // Замеряем характеристики области
-            unsigned int length_from_weight_center;
-            unsigned int length_from_weight_center_max = 0;
-            unsigned int length_from_weight_center_min = fmax(max_x - min_x, max_y - min_y);
+            float length_from_weight_center;
+            float length_from_weight_center_max = 0;
+            float length_from_weight_center_min = fmax(max_x - min_x, max_y - min_y);
 
             while (continue_loop){
-                length_from_weight_center = (unsigned int)sqrt( (long)pow((unsigned long)abs_i(x - (int)weight_x), 2) + (unsigned long)pow((unsigned long)abs_i(y -(int) weight_y), 2));
+                length_from_weight_center = (float)sqrt( (long)pow((unsigned long)abs_i(x - (int)weight_x), 2) + (unsigned long)pow((unsigned long)abs_i(y -(int) weight_y), 2));
                 
                 updateMaxAndMinValue(length_from_weight_center, length_from_weight_center_max, length_from_weight_center_min);
                 set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
@@ -1004,9 +1009,11 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
             console_print("Min size from center to edge");
             console_print(length_from_weight_center_min);
             console_print("Size difference edge and center");
-            console_print(length_from_weight_center_max - length_from_weight_center_min);
 
-            drawString(data, data_width, data_height, color_darkgray, length_from_weight_center_max - length_from_weight_center_min, weight_x, weight_y - 34, 2);
+            float length_from_weight_center_difference_percent = (float)length_from_weight_center_max/(float)length_from_weight_center_min * 100 - 100;
+            console_print(length_from_weight_center_difference_percent);
+
+            drawString(data, data_width, data_height, color_darkgray, length_from_weight_center_difference_percent, weight_x, weight_y - 34, 2);
 
             //on_object_found(data, center_x, center_y, (unsigned int)(x_summ/length), (unsigned int)(y_summ/length), length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
