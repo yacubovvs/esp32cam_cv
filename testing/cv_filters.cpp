@@ -54,12 +54,13 @@ static unsigned char color_darkgray[]   =  {    64,     64,     64      };
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
-#define ANY_OBJECT                  0x0001
+#define ANY_OBJECT                          0x0001
 
-#define EXAMPLE_CLOCK               0xFF01
-#define EXAMPLE_SINGLE_OBJECT       0xFF02
-#define EXAMPLE_SEARCH_OBJECTS      0xFF03
-#define EXAMPLE_GET_GEOMETRY_PARAMS      0xFF03
+#define EXAMPLE_CLOCK                       0xFF01
+#define EXAMPLE_SINGLE_OBJECT               0xFF02
+#define EXAMPLE_SEARCH_OBJECTS              0xFF03
+#define EXAMPLE_GET_GEOMETRY_PARAMS         0xFF04
+#define EXAMPLE_DETECT_DATAMATRIX_EDGE      0xFF05
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -620,7 +621,7 @@ void detect_objects(unsigned char* data, int obj_detection_type){
     }
 
     //Вернем цвета
-    changeColor(data, color_blue, color_white);
+    //changeColor(data, color_blue, color_white);
 
 }
 
@@ -911,12 +912,102 @@ void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blac
 
 int total_objects = 0;
 
-// Вызывается когда найден новый периметр для более детального разбора
-void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+void on_object_found_ANY_OBJECT(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
-    if(obj_detection_type==ANY_OBJECT){
+}
 
-    }else if(obj_detection_type==EXAMPLE_GET_GEOMETRY_PARAMS){
+void on_object_found_EXAMPLE_CLOCK(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    int obj_height = max_x - min_x;
+    int obj_width = max_y - min_y;
+
+    bool x_pos = ((max_x + min_x)/2>data_width/2);
+    bool y_pos = ((max_y + min_y)/2>data_height/2);
+
+    int angle = atan(((float)obj_height)/((float)obj_width))*180.0/3.1415926535;
+    if(x_pos && !y_pos){
+        // quarter 1
+    }else if(x_pos && y_pos){
+        // quarter 2
+        angle+=90;
+    }else if(!x_pos && y_pos){
+        // quarter 3
+        angle+=180;
+    }else if(!x_pos && !y_pos){
+        // quarter 4
+        angle+=270;
+    }
+
+
+    if(perimeter>100 && perimeter<200){
+        console_print("Found hour hand");
+
+        int hours = 12*angle/360;
+
+        drawString(data, data_width, data_height, color_darkgray, hours, 5*6*1, 32, 5);
+        console_print("");
+
+    }else if(perimeter>200 && perimeter<300){
+        console_print("Found minute hand");
+
+        int minutes = 60*angle/360;
+
+        drawString(data, data_width, data_height, color_darkgray, ":", 5*6*3, 32, 5);
+        drawString(data, data_width, data_height, color_darkgray, minutes, 5*6*4, 32, 5);
+
+    }else{
+        // Other object found
+    }
+}
+
+void on_object_found_EXAMPLE_SINGLE_OBJECT(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    int x_pos = (max_x + min_x)/2;
+    int y_pos = (max_y + min_y)/2;
+
+    drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+    drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+    drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+    drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+    drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+    drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+
+    console_print("Object found");
+    console_print("x:");
+    console_print(x_pos);
+    console_print("y:");
+    console_print(y_pos);
+
+}
+
+void on_object_found_EXAMPLE_SEARCH_OBJECTS(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    if(perimeter>50){
+        int data_width = getWidth(data);
+        int data_height = getHeight(data);
+
+        int x_pos = (max_x + min_x)/2;
+        int y_pos = (max_y + min_y)/2;
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos, x_pos+5, y_pos);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos+1, x_pos+5, y_pos+1);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos-1, x_pos+5, y_pos-1);
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-5, x_pos, y_pos+5);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-5, x_pos+1, y_pos+5);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-5, x_pos-1, y_pos+5);
+
+        total_objects ++;
+
+        drawString(data, data_width, data_height, color_darkgray, total_objects, x_pos-42, y_pos - 10, 3);
+    }
+}
+
+void on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
         int data_width = getWidth(data);
         int data_height = getHeight(data);
 
@@ -1036,61 +1127,112 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
             drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
             drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
         }
-    }else if(obj_detection_type==EXAMPLE_CLOCK){
+}
 
-        int data_width = getWidth(data);
-        int data_height = getHeight(data);
 
-        int obj_height = max_x - min_x;
-        int obj_width = max_y - min_y;
+static int edge_detector_length_px = 10;
+static int edge_detector_dk_percent = 20;
+void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
-        bool x_pos = ((max_x + min_x)/2>data_width/2);
-        bool y_pos = ((max_y + min_y)/2>data_height/2);
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
 
-        int angle = atan(((float)obj_height)/((float)obj_width))*180.0/3.1415926535;
-        if(x_pos && !y_pos){
-            // quarter 1
-        }else if(x_pos && y_pos){
-            // quarter 2
-            angle+=90;
-        }else if(!x_pos && y_pos){
-            // quarter 3
-            angle+=180;
-        }else if(!x_pos && !y_pos){
-            // quarter 4
-            angle+=270;
+    unsigned int x_pos = weight_x;
+    unsigned int y_pos = weight_y;
+
+    int margin_frame = 70;
+    if (
+        perimeter>300 && perimeter<1200 
+        && x_pos>margin_frame 
+        && y_pos>margin_frame 
+        && x_pos<data_width-margin_frame 
+        && y_pos<data_height-margin_frame){
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME +                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        char direction = 2;
+        bool continue_loop = true;
+        
+        int x = start_x;
+        int y = start_y;
+
+        while (continue_loop){
+
+            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+            char check_direction = direction - 1;
+            if(check_direction<1) check_direction = 4;
+
+            for(unsigned char i=0; i<4; i++){
+                
+                unsigned char r = 0;
+                unsigned char g = 0;
+                unsigned char b = 0;
+
+                int check_x = x;
+                int check_y = y;
+
+                if(check_direction==1){
+                    check_x++;
+                }else if(check_direction==2){
+                    check_y--;
+                }else if(check_direction==3){
+                    check_x--;
+                }else if(check_direction==4){
+                    check_y++;
+                }
+
+                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
+
+                if(g==255 || r==255){
+                    x = check_x;
+                    y = check_y;
+
+                    direction = check_direction;
+
+                    break;
+                }
+
+                check_direction ++;
+                if(check_direction>4)check_direction=1;
+            }
+
+            if(x>data_width || x<0) continue_loop = false;
+            if(y>data_height || y<0) continue_loop = false;
+
+            if(x==start_x && y==start_y){
+                continue_loop = false;
+            }
+
+            /*
+            if(continue_loop==false){
+            }
+            */
         }
 
+        //on_object_found(data, center_x, center_y, (unsigned int)(x_summ/length), (unsigned int)(y_summ/length), length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
-        if(perimeter>100 && perimeter<200){
-            console_print("Found hour hand");
+        //Заменим текуший цвет временно на синий (цвет найденного контура)
+        //changeColor(data, color_red, color_darkgray);
 
-            int hours = 12*angle/360;
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME -                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
 
-            drawString(data, data_width, data_height, color_darkgray, hours, 5*6*1, 32, 5);
-            console_print("");
+        console_print("perimeter:");
+        console_print(perimeter);
 
-        }else if(perimeter>200 && perimeter<300){
-            console_print("Found minute hand");
-
-            int minutes = 60*angle/360;
-
-            drawString(data, data_width, data_height, color_darkgray, ":", 5*6*3, 32, 5);
-            drawString(data, data_width, data_height, color_darkgray, minutes, 5*6*4, 32, 5);
-
-        }else{
-            // Other object found
-        }
-
-
-    }else if(obj_detection_type==EXAMPLE_SINGLE_OBJECT){
-
-        int data_width = getWidth(data);
-        int data_height = getHeight(data);
-
-        int x_pos = (max_x + min_x)/2;
-        int y_pos = (max_y + min_y)/2;
-
+        
         drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
         drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
         drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
@@ -1098,47 +1240,33 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
         drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
         drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
         drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+        
+    }
+}
 
-        console_print("Object found");
-        console_print("x:");
-        console_print(x_pos);
-        console_print("y:");
-        console_print(y_pos);
+// Вызывается когда найден новый периметр для более детального разбора
+void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+
+    if(obj_detection_type==ANY_OBJECT){
+        on_object_found_ANY_OBJECT(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+
+    }else if(obj_detection_type==EXAMPLE_DETECT_DATAMATRIX_EDGE){
+        on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+
+    }else if(obj_detection_type==EXAMPLE_GET_GEOMETRY_PARAMS){
+        on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+
+    }else if(obj_detection_type==EXAMPLE_CLOCK){
+        on_object_found_EXAMPLE_CLOCK(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+
+    }else if(obj_detection_type==EXAMPLE_SINGLE_OBJECT){
+        on_object_found_EXAMPLE_SINGLE_OBJECT(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else if(obj_detection_type==EXAMPLE_SEARCH_OBJECTS){
-
-        if(perimeter>50){
-            int data_width = getWidth(data);
-            int data_height = getHeight(data);
-
-            int x_pos = (max_x + min_x)/2;
-            int y_pos = (max_y + min_y)/2;
-
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos, x_pos+5, y_pos);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos+1, x_pos+5, y_pos+1);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-5, y_pos-1, x_pos+5, y_pos-1);
-
-            drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-5, x_pos, y_pos+5);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-5, x_pos+1, y_pos+5);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-5, x_pos-1, y_pos+5);
-
-            total_objects ++;
-
-            drawString(data, data_width, data_height, color_darkgray, total_objects, x_pos-42, y_pos - 10, 3);
-        }
-        
+        on_object_found_EXAMPLE_SEARCH_OBJECTS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else{
-
-        console_print("Object detected");
-        console_print("Perimeter:");
-        console_print(perimeter);
-        console_print("Width:");
-        console_print(max_x - min_x);
-        console_print("Height:");
-        console_print(max_y - min_y);
-        console_print("");
-
+        console_print("Not specified object detected");
     }
 
 }
@@ -1165,32 +1293,18 @@ void on_width_got(unsigned char* data, int obj_width, int obj_width_max, int obj
 */
 
 // predefinition of example functions
-void example_get_watch_time     (unsigned char* data);
-void example_find_color_object  (unsigned char* data);
-void example_count_objects      (unsigned char* data);
-void example_get_object_width   (unsigned char* data);
+void example_get_watch_time                 (unsigned char* data);
+void example_find_color_object              (unsigned char* data);
+void example_count_objects                  (unsigned char* data);
+void example_get_object_width               (unsigned char* data);
+void example_get_object_geometry_params     (unsigned char* data);
+void example_detect_datamatrix_edge         (unsigned char* data);
 
 void cv_applyFilters(unsigned char* data){
 
     // Очищает не контрастные зоны
     
-    filter_blur_filter(
-        data, 
-        5              // Количество циклов размытия
-    );
-    
-    
-    filter_blackWhite(
-        data, 
-        200             // Яркость 0..255
-    );
-
-
-    // Определяет объекты
-    detect_objects(
-        data,
-        EXAMPLE_GET_GEOMETRY_PARAMS // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
-    );
+    example_detect_datamatrix_edge(data);
 
     /*
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1200,10 +1314,12 @@ void cv_applyFilters(unsigned char* data){
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     */
 
-    // example_get_object_width     (data);     // images/objects/14.bmp
-    // example_count_objects        (data);     // images/objects/7.bmp
-    // example_find_color_object    (data);     // images/objects/1.bmp
-    // example_get_watch_time       (data);     // images/objects/18.bmp
+    // example_detect_datamatrix_edge       (data);
+    // example_get_object_geometry_params   (data);
+    // example_get_object_width             (data);     // images/objects/14.bmp
+    // example_count_objects                (data);     // images/objects/7.bmp
+    // example_find_color_object            (data);     // images/objects/1.bmp
+    // example_get_watch_time               (data);     // images/objects/18.bmp
 
 
     /*
@@ -1338,6 +1454,55 @@ void example_get_object_width(unsigned char* data){
         color_red       // int[r,g,b] - цвет, на который необходимо заменить
     );
 }
+
+void example_get_object_geometry_params(unsigned char* data){
+
+    filter_blur_filter(
+        data, 
+        5              // Количество циклов размытия
+    );
+    
+    
+    filter_blackWhite(
+        data, 
+        200             // Яркость 0..255
+    );
+
+
+    // Определяет объекты
+    detect_objects(
+        data,
+        EXAMPLE_GET_GEOMETRY_PARAMS // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+}
+
+
+void example_detect_datamatrix_edge(unsigned char* data){    
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    unsigned int margin = 30;
+    drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
+    drawRect(data, data_width, data_height, color_white, 0, 0, margin, data_height-1, true);
+    drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
+    drawRect(data, data_width, data_height, color_white, 0, data_height - 1 - margin, data_width-1, data_height-1, true);
+    drawRect(data, data_width, data_height, color_white, data_width - 1 - margin, 0, data_width-1, data_height-1, true);
+    
+    // Поиск возможных штрих кодов на картинке
+    filter_barcode(data, 
+        15,             // Ширина и высота зона замера контраста
+        60              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
+
+    
+    // Определяет объекты
+    detect_objects(
+        data,
+        EXAMPLE_DETECT_DATAMATRIX_EDGE // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+}
+
 
 void example_count_objects(unsigned char* data){
 
