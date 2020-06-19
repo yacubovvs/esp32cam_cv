@@ -38,7 +38,13 @@ int main()
   listen(sock, 5);
   while (1) {
     client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len);
-    printf("New connection\n");
+    printf("# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n");
+    printf("# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n");
+    printf("# #                                                                                                     # #\n");
+    printf("# #                                            NEW CONNECTION                                           # #\n");
+    printf("# #                                                                                                     # #\n");
+    printf("# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n");
+    printf("# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n");
  
     if (client_fd == -1) {
       perror("Can't accept");

@@ -63,6 +63,7 @@ static unsigned char color_darkgray[]   =  {    64,     64,     64      };
 #define EXAMPLE_SEARCH_OBJECTS              0xFF03
 #define EXAMPLE_GET_GEOMETRY_PARAMS         0xFF04
 #define EXAMPLE_DETECT_DATAMATRIX_EDGE      0xFF05
+#define EXAMPLE_DETECT_OBJECT_CORNERS       0xFF06
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1142,146 +1143,12 @@ void on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(unsigned char* data, int x, int
 }
 
 
-int edge_detector_length_px = 10;
-int edge_detector_dk_percent = 20;
 void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
-    int data_width = getWidth(data);
-    int data_height = getHeight(data);
+}
 
-    unsigned int x_pos = weight_x;
-    unsigned int y_pos = weight_y;
+void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
-    int margin_frame = 70;
-
-    int x_poligon1 = 0; 
-    int y_poligon1 = 0; 
-    int x_poligon2 = 0; 
-    int y_poligon2 = 0; 
-
-    int poligon_counter = 0;
-    int poligon_k = 0;
-
-    if (
-        perimeter>300 && perimeter<1500 
-        && x_pos>margin_frame 
-        && y_pos>margin_frame 
-        && x_pos<data_width-margin_frame 
-        && y_pos<data_height-margin_frame){
-
-        /*
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # #                             FIND CIRCUIT SECOND TIME +                            # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        */
-
-        char direction = 2;
-        bool continue_loop = true;
-        
-        int x = start_x;
-        int y = start_y;
-
-        console_print("perimeter:");
-        console_print(perimeter);
-
-        while (continue_loop){
-
-            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
-
-            if(poligon_counter==0){
-                x_poligon1 = x; 
-                y_poligon1 = y; 
-            }
-            poligon_counter++;
-
-            if(poligon_counter>=edge_detector_length_px){
-                //set_pixel_rgb(data, data_width, data_height, x, y, 254, 0, 0);
-                drawLine(data, data_width, data_height, color_pink, x, y, x_poligon1, y_poligon1);
-                //console_print("New poligon");
-                poligon_counter = 0;
-                
-            }
-
-            
-
-            char check_direction = direction - 1;
-            if(check_direction<1) check_direction = 4;
-
-            for(unsigned char i=0; i<4; i++){
-                
-                unsigned char r = 0;
-                unsigned char g = 0;
-                unsigned char b = 0;
-
-                int check_x = x;
-                int check_y = y;
-
-                if(check_direction==1){
-                    check_x++;
-                }else if(check_direction==2){
-                    check_y--;
-                }else if(check_direction==3){
-                    check_x--;
-                }else if(check_direction==4){
-                    check_y++;
-                }
-
-                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
-
-                if(g==255 || r==255){
-                    x = check_x;
-                    y = check_y;
-
-                    direction = check_direction;
-
-                    break;
-                }
-
-                if(r==0 && g==0 && b==255){
-                    continue_loop = false;
-                }
-
-                check_direction ++;
-                if(check_direction>4)check_direction=1;
-            }
-
-            if(x>data_width || x<0) continue_loop = false;
-            if(y>data_height || y<0) continue_loop = false;
-
-            if(x==start_x && y==start_y){
-                continue_loop = false;
-            }
-
-            //console_print(poligon_counter);
-            //setPixel(data, data_width, data_height, color_pink, x, y);
-            //set_pixel_rgb(data, data_width, data_height, x, y, 254, 127, 127);
-            
-        }
-
-        //on_object_found(data, center_x, center_y, (unsigned int)(x_summ/length), (unsigned int)(y_summ/length), length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
-
-        //Заменим текуший цвет временно на синий (цвет найденного контура)
-        //changeColor(data, color_red, color_darkgray);
-
-        /*
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # #                             FIND CIRCUIT SECOND TIME -                            # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        */
-
-        drawLine(data, data_width, data_height, color_darkred, x_pos-10, y_pos, x_pos+10, y_pos);
-        drawLine(data, data_width, data_height, color_darkred, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
-        drawLine(data, data_width, data_height, color_darkred, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
-
-        drawLine(data, data_width, data_height, color_darkred, x_pos, y_pos-10, x_pos, y_pos+10);
-        drawLine(data, data_width, data_height, color_darkred, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
-        drawLine(data, data_width, data_height, color_darkred, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
-        
-    }
 }
 
 // Вызывается когда найден новый периметр для более детального разбора
@@ -1304,6 +1171,9 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
 
     }else if(obj_detection_type==EXAMPLE_SEARCH_OBJECTS){
         on_object_found_EXAMPLE_SEARCH_OBJECTS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+
+    }else if(obj_detection_type==EXAMPLE_DETECT_OBJECT_CORNERS){
+        on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else{
         console_print("Not specified object detected");
@@ -1523,20 +1393,31 @@ void example_detect_datamatrix_edge(unsigned char* data){
     int data_height = getHeight(data);
 
     
+    /*
     unsigned int margin = 2;
     drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
     drawRect(data, data_width, data_height, color_white, 0, 0, margin, data_height-1, true);
     drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
     drawRect(data, data_width, data_height, color_white, 0, data_height - 1 - margin, data_width-1, data_height-1, true);
     drawRect(data, data_width, data_height, color_white, data_width - 1 - margin, 0, data_width-1, data_height-1, true);
-    
+    */
     
     // Поиск возможных штрих кодов на картинке
+    /*
     filter_barcode(data, 
-        15,             // Ширина и высота зона замера контраста
-        60              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        30,             // Ширина и высота зона замера контраста
+        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );*/
+
+    filter_blur_filter(
+        data, 
+        5              // Количество циклов размытия
     );
 
+    filter_blackWhite(
+        data, 
+        210             // Яркость 0..255
+    );
     
     // Определяет объекты
     detect_objects(
