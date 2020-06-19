@@ -37,6 +37,8 @@ void updateMaxAndMinValue(float &value, float &max, float &min){
 
 
 static unsigned char color_red[]        =  {    255,    0,      0       };
+static unsigned char color_pink[]       =  {    255,    127,    127     };
+static unsigned char color_darkred[]    =  {    127,    0,      0       };
 static unsigned char color_green[]      =  {    0,      255,    0       };
 static unsigned char color_blue[]       =  {    0,      0,      255     };
 static unsigned char color_black[]      =  {    0,      0,      0       };
@@ -559,6 +561,10 @@ void detect_object_circuits(unsigned char* data, int start_x, int start_y, int o
                 break;
             }
 
+            if(r==0 && g==0 && b==255){
+                continue_loop = false;
+            }
+
             check_direction ++;
             if(check_direction>4)check_direction=1;
         }
@@ -569,6 +575,8 @@ void detect_object_circuits(unsigned char* data, int start_x, int start_y, int o
         if(x==start_x && y==start_y){
             continue_loop = false;
         }
+
+        
 
         /*
         if(continue_loop==false){
@@ -621,7 +629,7 @@ void detect_objects(unsigned char* data, int obj_detection_type){
     }
 
     //Вернем цвета
-    //changeColor(data, color_blue, color_white);
+    changeColor(data, color_blue, color_white);
 
 }
 
@@ -1076,6 +1084,10 @@ void on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(unsigned char* data, int x, int
                         break;
                     }
 
+                    if(r==0 && g==0 && b==255){
+                        continue_loop = false;
+                    }
+
                     check_direction ++;
                     if(check_direction>4)check_direction=1;
                 }
@@ -1130,8 +1142,8 @@ void on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(unsigned char* data, int x, int
 }
 
 
-static int edge_detector_length_px = 10;
-static int edge_detector_dk_percent = 20;
+int edge_detector_length_px = 10;
+int edge_detector_dk_percent = 20;
 void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
     int data_width = getWidth(data);
@@ -1141,8 +1153,17 @@ void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, 
     unsigned int y_pos = weight_y;
 
     int margin_frame = 70;
+
+    int x_poligon1 = 0; 
+    int y_poligon1 = 0; 
+    int x_poligon2 = 0; 
+    int y_poligon2 = 0; 
+
+    int poligon_counter = 0;
+    int poligon_k = 0;
+
     if (
-        perimeter>300 && perimeter<1200 
+        perimeter>300 && perimeter<1500 
         && x_pos>margin_frame 
         && y_pos>margin_frame 
         && x_pos<data_width-margin_frame 
@@ -1162,9 +1183,28 @@ void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, 
         int x = start_x;
         int y = start_y;
 
+        console_print("perimeter:");
+        console_print(perimeter);
+
         while (continue_loop){
 
             set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+            if(poligon_counter==0){
+                x_poligon1 = x; 
+                y_poligon1 = y; 
+            }
+            poligon_counter++;
+
+            if(poligon_counter>=edge_detector_length_px){
+                //set_pixel_rgb(data, data_width, data_height, x, y, 254, 0, 0);
+                drawLine(data, data_width, data_height, color_pink, x, y, x_poligon1, y_poligon1);
+                //console_print("New poligon");
+                poligon_counter = 0;
+                
+            }
+
+            
 
             char check_direction = direction - 1;
             if(check_direction<1) check_direction = 4;
@@ -1199,6 +1239,10 @@ void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, 
                     break;
                 }
 
+                if(r==0 && g==0 && b==255){
+                    continue_loop = false;
+                }
+
                 check_direction ++;
                 if(check_direction>4)check_direction=1;
             }
@@ -1210,10 +1254,10 @@ void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, 
                 continue_loop = false;
             }
 
-            /*
-            if(continue_loop==false){
-            }
-            */
+            //console_print(poligon_counter);
+            //setPixel(data, data_width, data_height, color_pink, x, y);
+            //set_pixel_rgb(data, data_width, data_height, x, y, 254, 127, 127);
+            
         }
 
         //on_object_found(data, center_x, center_y, (unsigned int)(x_summ/length), (unsigned int)(y_summ/length), length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
@@ -1229,17 +1273,13 @@ void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, 
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         */
 
-        console_print("perimeter:");
-        console_print(perimeter);
+        drawLine(data, data_width, data_height, color_darkred, x_pos-10, y_pos, x_pos+10, y_pos);
+        drawLine(data, data_width, data_height, color_darkred, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+        drawLine(data, data_width, data_height, color_darkred, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
 
-        
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
-
-        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkred, x_pos, y_pos-10, x_pos, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkred, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkred, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
         
     }
 }
@@ -1482,12 +1522,14 @@ void example_detect_datamatrix_edge(unsigned char* data){
     int data_width = getWidth(data);
     int data_height = getHeight(data);
 
-    unsigned int margin = 30;
+    
+    unsigned int margin = 2;
     drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
     drawRect(data, data_width, data_height, color_white, 0, 0, margin, data_height-1, true);
     drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
     drawRect(data, data_width, data_height, color_white, 0, data_height - 1 - margin, data_width-1, data_height-1, true);
     drawRect(data, data_width, data_height, color_white, data_width - 1 - margin, 0, data_width-1, data_height-1, true);
+    
     
     // Поиск возможных штрих кодов на картинке
     filter_barcode(data, 
@@ -1501,6 +1543,8 @@ void example_detect_datamatrix_edge(unsigned char* data){
         data,
         EXAMPLE_DETECT_DATAMATRIX_EDGE // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
     );
+
+    console_print("finished...");
 }
 
 
