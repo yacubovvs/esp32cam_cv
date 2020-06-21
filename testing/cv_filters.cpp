@@ -11,6 +11,13 @@
         printf("\n");
     }
 
+    void console_print(char* out, long dout){
+        printf(out);
+        printf(": ");
+        printf("%d", dout);
+        printf("\n");
+    }
+
     void console_print(long out){
         printf("%d", out);
         printf("\n");
@@ -36,16 +43,18 @@ void updateMaxAndMinValue(float &value, float &max, float &min){
 }
 
 
-static unsigned char color_red[]        =  {    255,    0,      0       };
-static unsigned char color_pink[]       =  {    255,    127,    127     };
-static unsigned char color_darkred[]    =  {    127,    0,      0       };
-static unsigned char color_green[]      =  {    0,      255,    0       };
-static unsigned char color_blue[]       =  {    0,      0,      255     };
-static unsigned char color_black[]      =  {    0,      0,      0       };
-static unsigned char color_white[]      =  {    255,    255,    255     };
-static unsigned char color_gray[]       =  {    127,    127,    127     };
-static unsigned char color_lightgray[]  =  {    192,    192,    192     };
-static unsigned char color_darkgray[]   =  {    64,     64,     64      };
+static unsigned char color_red[]                =  {    255,    0,      0       };
+static unsigned char color_near_red[]           =  {    254,    0,      0       };
+static unsigned char color_pink[]               =  {    255,    127,    127     };
+static unsigned char color_darkred[]            =  {    127,    0,      0       };
+static unsigned char color_green[]              =  {    0,      255,    0       };
+static unsigned char color_near_green[]         =  {    0,      254,    0       };
+static unsigned char color_blue[]               =  {    0,      0,      255     };
+static unsigned char color_black[]              =  {    0,      0,      0       };
+static unsigned char color_white[]              =  {    255,    255,    255     };
+static unsigned char color_gray[]               =  {    127,    127,    127     };
+static unsigned char color_lightgray[]          =  {    192,    192,    192     };
+static unsigned char color_darkgray[]           =  {    64,     64,     64      };
 
 
 /*
@@ -1017,138 +1026,360 @@ void on_object_found_EXAMPLE_SEARCH_OBJECTS(unsigned char* data, int x, int y, u
 }
 
 void on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
-        int data_width = getWidth(data);
-        int data_height = getHeight(data);
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
 
-        unsigned int x_pos = weight_x;
-        unsigned int y_pos = weight_y;
+    unsigned int x_pos = weight_x;
+    unsigned int y_pos = weight_y;
 
-        int margin_frame = 70;
+    int margin_frame = 70;
 
-        if (perimeter>margin_frame && x_pos>margin_frame && y_pos>margin_frame && x_pos<data_width-margin_frame && y_pos<data_height-margin_frame){
+    if (perimeter>margin_frame && x_pos>margin_frame && y_pos>margin_frame && x_pos<data_width-margin_frame && y_pos<data_height-margin_frame){
 
-            /*
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # #                             FIND CIRCUIT SECOND TIME +                            # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            */
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME +                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
 
-            char direction = 2;
-            bool continue_loop = true;
+        char direction = 2;
+        bool continue_loop = true;
+        
+        int x = start_x;
+        int y = start_y;
+
+        // Замеряем характеристики области
+        float length_from_weight_center;
+        float length_from_weight_center_max = 0;
+        float length_from_weight_center_min = fmax(max_x - min_x, max_y - min_y);
+
+        while (continue_loop){
+            length_from_weight_center = (float)sqrt( (long)pow((unsigned long)abs_i(x - (int)weight_x), 2) + (unsigned long)pow((unsigned long)abs_i(y -(int) weight_y), 2));
             
-            int x = start_x;
-            int y = start_y;
+            updateMaxAndMinValue(length_from_weight_center, length_from_weight_center_max, length_from_weight_center_min);
+            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
 
-            // Замеряем характеристики области
-            float length_from_weight_center;
-            float length_from_weight_center_max = 0;
-            float length_from_weight_center_min = fmax(max_x - min_x, max_y - min_y);
+            char check_direction = direction - 1;
+            if(check_direction<1) check_direction = 4;
 
-            while (continue_loop){
-                length_from_weight_center = (float)sqrt( (long)pow((unsigned long)abs_i(x - (int)weight_x), 2) + (unsigned long)pow((unsigned long)abs_i(y -(int) weight_y), 2));
+            for(unsigned char i=0; i<4; i++){
                 
-                updateMaxAndMinValue(length_from_weight_center, length_from_weight_center_max, length_from_weight_center_min);
-                set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+                unsigned char r = 0;
+                unsigned char g = 0;
+                unsigned char b = 0;
 
-                char check_direction = direction - 1;
-                if(check_direction<1) check_direction = 4;
+                int check_x = x;
+                int check_y = y;
 
-                for(unsigned char i=0; i<4; i++){
-                    
-                    unsigned char r = 0;
-                    unsigned char g = 0;
-                    unsigned char b = 0;
-
-                    int check_x = x;
-                    int check_y = y;
-
-                    if(check_direction==1){
-                        check_x++;
-                    }else if(check_direction==2){
-                        check_y--;
-                    }else if(check_direction==3){
-                        check_x--;
-                    }else if(check_direction==4){
-                        check_y++;
-                    }
-
-                    get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
-
-                    if(g==255 || r==255){
-                        x = check_x;
-                        y = check_y;
-
-                        direction = check_direction;
-
-                        break;
-                    }
-
-                    if(r==0 && g==0 && b==255){
-                        continue_loop = false;
-                    }
-
-                    check_direction ++;
-                    if(check_direction>4)check_direction=1;
+                if(check_direction==1){
+                    check_x++;
+                }else if(check_direction==2){
+                    check_y--;
+                }else if(check_direction==3){
+                    check_x--;
+                }else if(check_direction==4){
+                    check_y++;
                 }
 
-                if(x>data_width || x<0) continue_loop = false;
-                if(y>data_height || y<0) continue_loop = false;
+                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
 
-                if(x==start_x && y==start_y){
+                if(g==255 || r==255){
+                    x = check_x;
+                    y = check_y;
+
+                    direction = check_direction;
+
+                    break;
+                }
+
+                if(r==0 && g==0 && b==255){
                     continue_loop = false;
                 }
 
-                /*
-                if(continue_loop==false){
-                }
-                */
+                check_direction ++;
+                if(check_direction>4)check_direction=1;
             }
 
-            console_print("Circuit finished ---------------");
+            if(x>data_width || x<0) continue_loop = false;
+            if(y>data_height || y<0) continue_loop = false;
 
-            console_print("Max size from center to edge");
-            console_print(length_from_weight_center_max);
-            console_print("Min size from center to edge");
-            console_print(length_from_weight_center_min);
-            console_print("Size difference edge and center");
-
-            float length_from_weight_center_difference_percent = (float)length_from_weight_center_max/(float)length_from_weight_center_min * 100 - 100;
-            console_print(length_from_weight_center_difference_percent);
-
-            drawString(data, data_width, data_height, color_darkgray, length_from_weight_center_difference_percent, weight_x, weight_y - 34, 2);
-
-            //on_object_found(data, center_x, center_y, (unsigned int)(x_summ/length), (unsigned int)(y_summ/length), length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
-
-            //Заменим текуший цвет временно на синий (цвет найденного контура)
-            //changeColor(data, color_red, color_blue);
+            if(x==start_x && y==start_y){
+                continue_loop = false;
+            }
 
             /*
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # #                             FIND CIRCUIT SECOND TIME -                            # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            if(continue_loop==false){
+            }
             */
-
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
-
-            drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
-            drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
         }
-}
 
+        console_print("Circuit finished ---------------");
+
+        console_print("Max size from center to edge");
+        console_print(length_from_weight_center_max);
+        console_print("Min size from center to edge");
+        console_print(length_from_weight_center_min);
+        console_print("Size difference edge and center");
+
+        float length_from_weight_center_difference_percent = (float)length_from_weight_center_max/(float)length_from_weight_center_min * 100 - 100;
+        console_print(length_from_weight_center_difference_percent);
+
+        drawString(data, data_width, data_height, color_darkgray, length_from_weight_center_difference_percent, weight_x, weight_y - 34, 2);
+
+        //on_object_found(data, center_x, center_y, (unsigned int)(x_summ/length), (unsigned int)(y_summ/length), length, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+
+        //Заменим текуший цвет временно на синий (цвет найденного контура)
+        //changeColor(data, color_red, color_blue);
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME -                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+    }
+}
 
 void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
 }
 
 void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
 
+    unsigned int x_pos = weight_x;
+    unsigned int y_pos = weight_y;
+
+    int margin_frame = 0;
+
+    
+
+    if (perimeter>200 && x_pos>margin_frame && y_pos>margin_frame && x_pos<data_width-margin_frame && y_pos<data_height-margin_frame){
+        console_print("----------------- NEW OBJECT -----------------");
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME +                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        char direction = 2;
+        bool continue_loop = true;
+        
+        int x = start_x;
+        int y = start_y;
+
+        int x_last = x;
+        int y_last = y;
+
+        float angle = 0;
+        float angle_last = 0;
+
+        // Замеры расстояния от центра до точки
+        float length_from_weight_center_last_last   = 0;
+        float length_from_weight_center_last        = 0;
+        float length_from_weight_center             = 0;
+
+        float max_min_angle_difference = 5.0; // Минимальная разница углов
+        float max_min_angle_difference_2 = 80.0; // Минимальная разница углов для 2-го сглаживания
+        unsigned char check_max_min_every_step = 4; // проверять максимум и минимум каждые N шагов
+        unsigned char check_max_min_current_step = 0; // счетчик шагов
+
+        // Max and min points
+        int max_min_points_size = 200; //Количество точек максимума и минимума, которые будет хранить в буффере
+        int max_min_points_array[max_min_points_size*2]; // Инициализируем буффер точек максимума
+        /*
+            Структура массива:
+            0 - координата X
+            1 - координата Y
+        */
+        int max_min_points_length = 0; // Количество точек добавленных на данный момент
+
+        
+
+        while (continue_loop){
+            
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK +                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            if(check_max_min_current_step>=check_max_min_every_step){
+                //length_from_weight_center = (float)sqrt( (long)pow((unsigned long)abs_i(x - (int)weight_x), 2) + (unsigned long)pow((unsigned long)abs_i(y -(int) weight_y), 2));
+
+                angle = atan2((float)(y-y_last), (float)(x-x_last))*180.0/3.1415926535;
+                
+                //console_print(abs(angle-angle_last));
+
+                if(abs(angle-angle_last)>max_min_angle_difference && 360 - abs(angle-angle_last) > max_min_angle_difference ){
+                    if(max_min_points_length+1<max_min_points_size){
+                        max_min_points_array[max_min_points_length*2]       = x_last;
+                        max_min_points_array[max_min_points_length*2 + 1]   = y_last;
+                        max_min_points_length++;
+                    }
+                }
+
+                // Подготавливаем преременные для следующей проверки
+                x_last = x;
+                y_last = y;
+
+                check_max_min_current_step = 0;
+                angle_last = angle;
+                //console_print("Check step");   
+            }
+
+            check_max_min_current_step++;
+
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK -                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+            char check_direction = direction - 1;
+            if(check_direction<1) check_direction = 4;
+
+            for(unsigned char i=0; i<4; i++){
+                
+                unsigned char r = 0;
+                unsigned char g = 0;
+                unsigned char b = 0;
+
+                int check_x = x;
+                int check_y = y;
+
+                if(check_direction==1){
+                    check_x++;
+                }else if(check_direction==2){
+                    check_y--;
+                }else if(check_direction==3){
+                    check_x--;
+                }else if(check_direction==4){
+                    check_y++;
+                }
+
+                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
+
+                if(g==255 || r==255){
+                    x = check_x;
+                    y = check_y;
+
+                    direction = check_direction;
+
+                    break;
+                }
+
+                if(r==0 && g==0 && b==255){
+                    continue_loop = false;
+                }
+
+                check_direction ++;
+                if(check_direction>4)check_direction=1;
+            }
+
+            if(x>data_width || x<0) continue_loop = false;
+            if(y>data_height || y<0) continue_loop = false;
+
+            if(x==start_x && y==start_y){
+                continue_loop = false;
+            }
+
+        }
+
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME -                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        int xpoint = 0;
+        int ypoint = 0;
+
+        // Выведем на экран первичные точки алгоритма поиска углов
+        for(int i=0; i<max_min_points_length; i++){
+            xpoint = max_min_points_array[i*2];
+            ypoint = max_min_points_array[i*2 + 1];
+
+            unsigned char cross_length = 2;
+            drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+            drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+        }
+
+        //console_print("max_min_points_length");
+        //console_print(max_min_points_length);
+
+        // Начинаем вторичное сглаживание обходя массив точек, 
+        //при этом удаляя точки пока между каждым отрезком не будет угол в max_min_angle_difference_2 градусов
+        int xpoint_last = 0;
+        int ypoint_last = 0;
+        angle_last = 0;
+
+        for(int i=1; i<max_min_points_length; i++){
+            xpoint_last     = max_min_points_array[(i-1)*2];
+            ypoint_last     = max_min_points_array[(i-1)*2 + 1];
+            xpoint          = max_min_points_array[i*2];
+            ypoint          = max_min_points_array[i*2 + 1];
+
+            angle = atan2((float)(xpoint-xpoint_last), (float)(ypoint-ypoint_last))*180.0/3.1415926535;
+
+            //console_print(abs(angle-angle_last));
+            if(abs(angle-angle_last)>max_min_angle_difference_2 && 360 - abs(angle-angle_last) > max_min_angle_difference_2 ){
+                /*
+                if(max_min_points_length+1<max_min_points_size){
+                    max_min_points_array[max_min_points_length*2]       = x_last;
+                    max_min_points_array[max_min_points_length*2 + 1]   = y_last;
+                    max_min_points_length++;
+                }
+                */
+
+                unsigned char cross_length = 4;
+                drawLine(data, data_width, data_height, color_near_red, xpoint_last-cross_length, ypoint_last, xpoint_last+cross_length, ypoint_last);
+                drawLine(data, data_width, data_height, color_near_red, xpoint_last, ypoint_last-cross_length, xpoint_last, ypoint_last+cross_length);
+
+                angle_last = angle;
+            }else{
+                max_min_points_array[(i-1)*2]       = 0;
+                max_min_points_array[(i-1)*2 + 1]   = 0;
+            }
+
+            
+            //drawLine(data, data_width, data_height, color_near_green, xpoint-10, ypoint, xpoint+10, ypoint);
+            //drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-10, xpoint, ypoint+10);
+        }
+
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+    }
 }
 
 // Вызывается когда найден новый периметр для более детального разбора
@@ -1158,7 +1389,8 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
         on_object_found_ANY_OBJECT(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else if(obj_detection_type==EXAMPLE_DETECT_DATAMATRIX_EDGE){
-        on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+        //on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+        on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else if(obj_detection_type==EXAMPLE_GET_GEOMETRY_PARAMS){
         on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
@@ -1168,9 +1400,6 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
 
     }else if(obj_detection_type==EXAMPLE_SINGLE_OBJECT){
         on_object_found_EXAMPLE_SINGLE_OBJECT(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
-
-    }else if(obj_detection_type==EXAMPLE_SEARCH_OBJECTS){
-        on_object_found_EXAMPLE_SEARCH_OBJECTS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else if(obj_detection_type==EXAMPLE_DETECT_OBJECT_CORNERS){
         on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
@@ -1386,7 +1615,6 @@ void example_get_object_geometry_params(unsigned char* data){
     );
 }
 
-
 void example_detect_datamatrix_edge(unsigned char* data){    
 
     int data_width = getWidth(data);
@@ -1403,12 +1631,20 @@ void example_detect_datamatrix_edge(unsigned char* data){
     */
     
     // Поиск возможных штрих кодов на картинке
-    /*
-    filter_barcode(data, 
-        30,             // Ширина и высота зона замера контраста
-        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
-    );*/
 
+    /* 
+    filter_blur_filter(
+        data, 
+        1              // Количество циклов размытия
+    );
+
+    filter_barcode(data, 
+        10,             // Ширина и высота зона замера контраста
+        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
+    // */
+
+    
     filter_blur_filter(
         data, 
         5              // Количество циклов размытия
@@ -1419,15 +1655,16 @@ void example_detect_datamatrix_edge(unsigned char* data){
         210             // Яркость 0..255
     );
     
+    
     // Определяет объекты
+    /* */
     detect_objects(
         data,
-        EXAMPLE_DETECT_DATAMATRIX_EDGE // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+        EXAMPLE_DETECT_OBJECT_CORNERS // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
     );
-
+    // */
     console_print("finished...");
 }
-
 
 void example_count_objects(unsigned char* data){
 
