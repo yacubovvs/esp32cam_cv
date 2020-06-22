@@ -1164,6 +1164,164 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
 
     int margin_frame = 0;
 
+    if (perimeter>50){
+        console_print("----------------- NEW OBJECT -----------------");
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME +                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        char direction = 2;
+        bool continue_loop = true;
+        
+        int x = start_x;
+        int y = start_y;
+
+        unsigned int max_points_for_object_buffer = 250;
+        unsigned int step_px = perimeter/max_points_for_object_buffer + 1;
+        unsigned int current_step;
+        console_print("step_px", step_px);
+
+        // Max and min points
+        unsigned int object_points[max_points_for_object_buffer*2]; // Инициализируем буффер точек максимума
+        /*
+            Структура массива:
+            0 - координата X
+            1 - координата Y
+        */
+        int object_points_length = 0; // Количество точек добавленных на данный момент
+
+        while (continue_loop){
+            
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK +                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            if(current_step>=step_px){
+
+                object_points[object_points_length*2] = x;
+                object_points[object_points_length*2 + 1] = y;
+
+                // Подготавливаем преременные для следующей проверки
+                current_step = 0;
+                object_points_length ++;
+            }
+
+            current_step++;
+
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK -                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+            char check_direction = direction - 1;
+            if(check_direction<1) check_direction = 4;
+
+            for(unsigned char i=0; i<4; i++){
+                
+                unsigned char r = 0;
+                unsigned char g = 0;
+                unsigned char b = 0;
+
+                int check_x = x;
+                int check_y = y;
+
+                if(check_direction==1){
+                    check_x++;
+                }else if(check_direction==2){
+                    check_y--;
+                }else if(check_direction==3){
+                    check_x--;
+                }else if(check_direction==4){
+                    check_y++;
+                }
+
+                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
+
+                if(g==255 || r==255){
+                    x = check_x;
+                    y = check_y;
+
+                    direction = check_direction;
+
+                    break;
+                }
+
+                if(r==0 && g==0 && b==255){
+                    continue_loop = false;
+                }
+
+                check_direction ++;
+                if(check_direction>4)check_direction=1;
+            }
+
+            if(x>data_width || x<0) continue_loop = false;
+            if(y>data_height || y<0) continue_loop = false;
+
+            if(x==start_x && y==start_y){
+                continue_loop = false;
+            }
+
+        }
+
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME -                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        unsigned int xpoint = 0;
+        unsigned int ypoint = 0;
+
+        // Выведем на экран первичные точки алгоритма поиска углов
+        for(int i=0; i<object_points_length; i++){
+
+            xpoint = object_points[i*2];
+            ypoint = object_points[i*2 + 1];
+
+            unsigned char cross_length = 2;
+            drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+            drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+        }
+
+
+
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+    }
+}
+
+void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS_2(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    unsigned int x_pos = weight_x;
+    unsigned int y_pos = weight_y;
+
+    int margin_frame = 0;
+
     
 
     if (perimeter>200 && x_pos>margin_frame && y_pos>margin_frame && x_pos<data_width-margin_frame && y_pos<data_height-margin_frame){
@@ -1188,11 +1346,6 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
 
         float angle = 0;
         float angle_last = 0;
-
-        // Замеры расстояния от центра до точки
-        float length_from_weight_center_last_last   = 0;
-        float length_from_weight_center_last        = 0;
-        float length_from_weight_center             = 0;
 
         float max_min_angle_difference = 5.0; // Минимальная разница углов
         float max_min_angle_difference_2 = 80.0; // Минимальная разница углов для 2-го сглаживания
