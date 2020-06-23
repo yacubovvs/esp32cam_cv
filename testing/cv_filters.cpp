@@ -1184,7 +1184,7 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
         unsigned int max_points_for_object_buffer = 250;
         unsigned int step_px = perimeter/max_points_for_object_buffer + 1;
         unsigned int current_step;
-        console_print("step_px", step_px);
+        //console_print("step_px", step_px);
 
         // Max and min points
         unsigned int object_points[max_points_for_object_buffer*2]; // Инициализируем буффер точек максимума
