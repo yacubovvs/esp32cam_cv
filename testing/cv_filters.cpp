@@ -1189,9 +1189,9 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
         unsigned int max_points_for_object_buffer = 200; // Максимальное количество точек в буфере для каждого контура 
 
         unsigned char rounding = 8; // Расстония окружности, по которой будет происходить замер сторон
-
+        unsigned int max_corner_size = rounding*2; // Максимальный размер угло в точках, если область больше, то разбивается на 2 или более углов
         unsigned int max_corner_length = 10; //Длина угла в точка контура
-        float corner_distance_difference = 1.005; // Разница сторон замера теругольника после которой считается что искривление является углом
+        float corner_distance_difference = 1.002; // Разница сторон замера теругольника после которой считается что искривление является углом
 
         unsigned int step_px = perimeter/max_points_for_object_buffer + 1;
         unsigned int current_step;
@@ -1352,7 +1352,6 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
                     #endif
 
                     //console_print("Start of corner", i);
-
                     corner_start = i;
                 }
             }else{
@@ -1379,25 +1378,78 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
                     }
                     else{
                         //Простое высчитывание точки угла.
-                        object_corners_points[object_corners_points_length] = (corner_start + i)/2;
-                        object_corners_points_length ++;
+                        unsigned int corner_size = (i - corner_start);
+                        if( corner_size > max_corner_size){
+                            unsigned char corners_count = corner_size/max_corner_size + 1;
+                            
+                            for (unsigned char ii=1; ii<corners_count+1; ii++){
+                                object_corners_points[object_corners_points_length] = corner_start + corner_size*(ii)/corners_count - corner_size/corners_count/2;
+                                object_corners_points_length ++;
+                            }
+
+                        }else{
+                            object_corners_points[object_corners_points_length] = (corner_start + i)/2;
+                            object_corners_points_length ++;
+                        }
+                        
                     }
                 }
             }
 
             isCorner_last = isCorner;
             
+            if(i==object_points_length-1 && isCorner && corner_first_end!=0){
+                // Последняя точка, обычно попадает на угол, потому что обычно она попадает обычно на разрыв угла
+                unsigned int corner_size = object_points_length - 1 - corner_start + corner_first_end;
+                if( corner_size > max_corner_size){
+                    unsigned char corners_count = corner_size/max_corner_size + 1;
+
+                    //console_print("object_points_length", object_points_length);
+                    //console_print("corner_start", corner_start);
+                    
+                    for (unsigned char ii=1; ii<corners_count+1; ii++){
+                        int sup_point_position = int_in_array(corner_start + corner_size*(ii)/corners_count - corner_size/corners_count/2, object_points_length-1);
+
+                        //console_print("point", sup_point_position);
+
+                        object_corners_points[object_corners_points_length] = sup_point_position;
+                        object_corners_points_length ++;
+                    }
+
+                    //console_print("corner_first_end", corner_first_end);
+
+                }else{
+                    int last_point = (corner_start + (corner_first_end+(object_points_length)))/2;
+                    if (last_point>object_points_length-1) last_point -= object_points_length;
+                    object_corners_points[object_corners_points_length] = last_point;
+                    object_corners_points_length ++;
+                }
+                
+                
+            }
+        }
+
+        // Возьмем и проверим, а вдруг фигура - это идеальный круг и в нем сосвем нет углов
+        // В этом случае насильно разобьем его на участки, приняв как один большой угол
+        if(object_corners_points_length==0){
+            int point_distance = (object_points_length-1)/max_corner_size;
+
+            if((object_points_length-1)%max_corner_size!=0){
+                object_corners_points[object_corners_points_length] = object_points_length-1;
+                object_corners_points_length ++;
+            }
             
-            if(i==object_points_length-1 && isCorner){
-                int last_point = (corner_start + (corner_first_end+(object_points_length)))/2;
-                if (last_point>object_points_length-1) last_point -= object_points_length;
-                object_corners_points[object_corners_points_length] = last_point;
+            for(int i=0; i<object_points_length-1; i+=point_distance){
+                object_corners_points[object_corners_points_length] = i;
                 object_corners_points_length ++;
             }
         }
 
-        //Выведем все точки углов
+        // Выведем все точки углов
         for (int i =0; i<object_corners_points_length; i++){
+
+            //console_print("posint position", object_corners_points[i]);
+
             xpoint          = object_points[object_corners_points[i]*2];
             ypoint          = object_points[object_corners_points[i]*2 + 1];
 
