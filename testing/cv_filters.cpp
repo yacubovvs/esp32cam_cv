@@ -1181,7 +1181,7 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
         int x = start_x;
         int y = start_y;
 
-        unsigned int max_points_for_object_buffer = 250;
+        unsigned int max_points_for_object_buffer = 200;
         unsigned int step_px = perimeter/max_points_for_object_buffer + 1;
         unsigned int current_step;
         //console_print("step_px", step_px);
@@ -1290,6 +1290,7 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
         unsigned int ypoint = 0;
 
         // Выведем на экран первичные точки алгоритма поиска углов
+        /*
         for(int i=0; i<object_points_length; i++){
 
             xpoint = object_points[i*2];
@@ -1298,9 +1299,99 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
             unsigned char cross_length = 2;
             drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
             drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+        }*/
+
+        unsigned char rounding = 8;
+        // Уберем те точки, которые имеет минимальное отклонение от соседних
+        for(int i=0; i<object_points_length; i++){
+
+            xpoint          = object_points[i*2];
+            ypoint          = object_points[i*2 + 1];
+
+            /*
+            int xpoint_1 = object_points[ (i-rounding)*2 ];
+            int ypoint_1 = object_points[ (i-rounding)*2 + 1 ];
+            int xpoint_2 = object_points[ (i+rounding)*2 ];
+            int ypoint_2 = object_points[ (i+rounding)*2 + 1 ];
+            */
+
+
+            int xpoint_1 = object_points[ int_in_array((i-rounding)*2,      (object_points_length-1)*2) ];
+            int ypoint_1 = object_points[ int_in_array((i-rounding)*2 + 1,  (object_points_length-1)*2) ];
+            int xpoint_2 = object_points[ int_in_array((i+rounding)*2,      (object_points_length-1)*2) ];
+            int ypoint_2 = object_points[ int_in_array((i+rounding)*2 + 1,  (object_points_length-1)*2) ];
+            
+
+            float distance = distance_between_point(
+                xpoint_1,
+                ypoint_1,
+                xpoint_2,
+                ypoint_2
+            );
+
+            float distance2 = 
+            distance_between_point(
+                xpoint,
+                ypoint,
+                xpoint_2,
+                ypoint_2
+            ) +
+            distance_between_point(
+                xpoint_1,
+                ypoint_1,
+                xpoint,
+                ypoint
+            );
+
+            if(i%2==0)
+            console_print("distance", distance2 - distance);            
+
+            
+            if(distance2 - distance>8){
+                unsigned char cross_length = 2;
+                drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+            }else{
+                unsigned char cross_length = 2;
+                drawLine(data, data_width, data_height, color_near_red, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                drawLine(data, data_width, data_height, color_near_red, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+            }
+            
         }
 
+        /*
+        unsigned int xpoint_next    = 0;
+        unsigned int ypoint_next    = 0;
+        unsigned int xpoint_check   = 0;
+        unsigned int ypoint_check   = 0;
+        float distance = 0;
 
+        xpoint          = object_points[0];
+        ypoint          = object_points[1];
+        // Уберем те точки, которые имеет минимальное отклонение от соседних
+        //for(int i=0; i<object_points_length-3; i+=3){
+        for(int i=0; i<object_points_length-3; i++){
+
+            //xpoint          = object_points[i*2];
+            //ypoint          = object_points[i*2 + 1];
+            xpoint_next     = object_points[(i+2)*2];
+            ypoint_next     = object_points[(i+2)*2 + 1];
+            xpoint_check    = object_points[(i+1)*2];
+            ypoint_check    = object_points[(i+1)*2 + 1];
+
+            distance = getDistance_between_line_and_point(xpoint, ypoint, xpoint_next, ypoint_next, xpoint_check, ypoint_check);
+
+            if(distance<1.5){
+                unsigned char cross_length = 2;
+                drawLine(data, data_width, data_height, color_near_red, xpoint_check-cross_length, ypoint_check, xpoint_check+cross_length, ypoint_check);
+                drawLine(data, data_width, data_height, color_near_red, xpoint_check, ypoint_check-cross_length, xpoint_check, ypoint_check+cross_length);
+            }else{
+                xpoint          = object_points[(i+2)*2];
+                ypoint          = object_points[(i+2)*2 + 1];
+                i += 2;
+            }
+        }
+        */
 
 
         drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
