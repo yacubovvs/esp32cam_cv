@@ -1,5 +1,5 @@
 #define bmp_header_size     54
-
+#include "linear_barcode_detect.cpp"
 
 #ifndef arduino_device
     #include <math.h>
@@ -2441,13 +2441,32 @@ void example_simple_decode_linear_barcode(unsigned char* data){
         50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
     );
 
+    unsigned char dublicates = 10; // Сколько раз будет посторятся замер линии (необходимо при линии плохого качества)
+    if(dublicates%2==0) dublicates+=1; // Число должно быть нечетное, чтобы точнее определять линии
+
+    bool arr_line[data_width*dublicates];
+    //Отправляем данные на рсшифровку
+    for(int i=0; i<data_width; i++){
+        unsigned char r;
+        unsigned char g;
+        unsigned char b;
+
+        for(int ii=0; ii<dublicates; ii++){
+            get_pixel_rgb(data, data_width, data_height, i, data_height/2 - dublicates/2 + ii, r, g, b);
+            arr_line[i + data_width*ii] = (r==0 && g==0 && b==0);
+        }
+
+    }
+
+    detect_linear_barcode(arr_line, data_width, dublicates);
+
     // Рисуем красную линию, показывающую линию распознования штрих кода
     for(int i=0; i<data_width; i++){
         unsigned char r;
         unsigned char g;
         unsigned char b;
 
-        unsigned char line_width = 6;
+        unsigned char line_width = 6; // Ширина линии, которую рисуем на итоговой картинке
         for(int ii=0; ii<line_width; ii++){
             get_pixel_rgb(data, data_width, data_height, i, data_height/2 - line_width/2 + ii, r, g, b);
 
@@ -2457,6 +2476,7 @@ void example_simple_decode_linear_barcode(unsigned char* data){
                 set_pixel_rgb(data, data_width, data_height, i, data_height/2 - line_width/2 + ii, 255, 140, 140);
             }
         }
+
     }
         
     console_print("finished...");
