@@ -74,6 +74,7 @@ static unsigned char color_darkgray[]           =  {    64,     64,     64      
 #define EXAMPLE_GET_GEOMETRY_PARAMS         0xFF04
 #define EXAMPLE_DETECT_DATAMATRIX_EDGE      0xFF05
 #define EXAMPLE_DETECT_OBJECT_CORNERS       0xFF06
+#define EXAMPLE_DECODE_LINEAR_BARCODE       0xFF07
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1152,10 +1153,663 @@ void on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(unsigned char* data, int x, int
     }
 }
 
+//#define on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+#define on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_draw_contour
 void on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
 
+    unsigned int x_pos = weight_x;
+    unsigned int y_pos = weight_y;
+
+    int margin_frame = 0;
+
+    if (perimeter>400){
+        console_print("----------------- NEW OBJECT -----------------");
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME +                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+       console_print("perimeter", perimeter);
+
+        char direction = 2;
+        bool continue_loop = true;
+        
+        int x = start_x;
+        int y = start_y;
+
+        
+
+        unsigned char rounding = 3; // Расстония окружности, по которой будет происходить замер сторон
+        unsigned int max_corner_size = rounding*2; // Максимальный размер угло в точках, если область больше, то разбивается на 2 или более углов. 2 или более
+        unsigned int max_corner_length = 10; //Длина угла в точка контура
+        float corner_distance_difference = 1.1; // Разница сторон замера теругольника после которой считается что искривление является углом
+
+        unsigned int step_px = 2; // Длина шага замера 
+        unsigned int max_points_for_object_buffer = perimeter/step_px+1; // Максимальное количество точек в буфере для каждого контура 
+        unsigned int current_step;
+        //console_print("step_px", step_px);
+
+        // Max and min points
+        unsigned int object_points[max_points_for_object_buffer*2]; // Инициализируем буффер точек максимума
+        unsigned int object_corners_points[max_points_for_object_buffer/max_corner_length + 1]; // Инициализируем буффер точек углов
+        /*
+            Структура массивов:
+            0 - координата X
+            1 - координата Y
+        */
+        int object_points_length = 0; // Количество точек добавленных на данный момент
+        int object_corners_points_length = 0; // Количество точек добавленных на данный момент
+
+        while (continue_loop){
+            
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK +                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            if(current_step>=step_px){
+
+                object_points[object_points_length*2] = x;
+                object_points[object_points_length*2 + 1] = y;
+
+                // Подготавливаем преременные для следующей проверки
+                current_step = 0;
+                object_points_length ++;
+            }
+
+            current_step++;
+
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK -                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+            char check_direction = direction - 1;
+            if(check_direction<1) check_direction = 4;
+
+            for(unsigned char i=0; i<4; i++){
+                
+                unsigned char r = 0;
+                unsigned char g = 0;
+                unsigned char b = 0;
+
+                int check_x = x;
+                int check_y = y;
+
+                if(check_direction==1){
+                    check_x++;
+                }else if(check_direction==2){
+                    check_y--;
+                }else if(check_direction==3){
+                    check_x--;
+                }else if(check_direction==4){
+                    check_y++;
+                }
+
+                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
+
+                if(g==255 || r==255){
+                    x = check_x;
+                    y = check_y;
+
+                    direction = check_direction;
+
+                    break;
+                }
+
+                if(r==0 && g==0 && b==255){
+                    continue_loop = false;
+                }
+
+                check_direction ++;
+                if(check_direction>4)check_direction=1;
+            }
+
+            if(x>data_width || x<0) continue_loop = false;
+            if(y>data_height || y<0) continue_loop = false;
+
+            if(x==start_x && y==start_y){
+                continue_loop = false;
+            }
+
+        }
+
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME -                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        unsigned int xpoint = 0; // Текущая точка проверки Х
+        unsigned int ypoint = 0; // Текущая точка проверки Y
+
+        unsigned int xpoint_1; // Точка до точки проверки Х
+        unsigned int ypoint_1; // Точка до точки проверки Х
+        unsigned int xpoint_2; // Точка после точки проверки Х
+        unsigned int ypoint_2; // Точка после точки проверки Х
+
+        float distance; // Расстояние от крайних точек
+        float distance2; // Расстояние по сторонам равнобедренного треугольника
+
+        bool isCorner = true;       // Хранит состояние условия точки (является ли точка углом)
+        bool isCorner_last = true;  // Хранит состояние условия прошлой точки
+
+        //Вспомогательныйе переменные для поиска центра угла
+        int corner_first_end    = 0;
+        int corner_start        = 0;
+        int corner_end          = 0;
+
+        // Уберем те точки, которые имеет минимальное отклонение от соседних
+        for(int i=0; i<object_points_length; i++){
+
+            xpoint          = object_points[i*2];
+            ypoint          = object_points[i*2 + 1];
+
+            xpoint_1 = object_points[ int_in_array((i-rounding)*2,      (object_points_length-1)*2) ];
+            ypoint_1 = object_points[ int_in_array((i-rounding)*2 + 1,  (object_points_length-1)*2) ];
+            xpoint_2 = object_points[ int_in_array((i+rounding)*2,      (object_points_length-1)*2) ];
+            ypoint_2 = object_points[ int_in_array((i+rounding)*2 + 1,  (object_points_length-1)*2) ];
+            
+            distance = distance_between_point(xpoint_1, ypoint_1, xpoint_2, ypoint_2);
+            distance2 = distance_between_point(xpoint, ypoint, xpoint_2, ypoint_2) + distance_between_point(xpoint_1, ypoint_1, xpoint, ypoint);
+
+            isCorner = (distance2/distance)>corner_distance_difference; // Вот и условие по которому определяем является ли точка частью угла
+
+            // Сравнивая расстояние между основания равноберженного трегольника и длины его равных сторон, можно понять угол кривизны контура
+            if(isCorner){
+                // Изгиб достаточно кривой, чтоб считать его углом
+                unsigned char cross_length = 2;
+
+                #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+                    drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                    drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                #endif
+
+                if(isCorner!=isCorner_last){
+                    // Начало угла
+                    #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                    #endif
+
+                    //console_print("Start of corner", i);
+                    corner_start = i;
+                }
+            }else{
+                // Изгиб НЕ достаточно кривой, чтоб считать его углом
+                unsigned char cross_length = 2;
+
+                #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+                    drawLine(data, data_width, data_height, color_gray, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                    drawLine(data, data_width, data_height, color_gray, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                #endif
+
+                if(isCorner!=isCorner_last){
+                    // Конец угла
+                    #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                    #endif
+
+                    //console_print("End of corner", i);
+
+                    if(corner_start==0){
+                        corner_first_end = i;
+                        //Этот угол надо будет заполнить в конце, так как тут мы видимо только его начало
+                    }
+                    else{
+                        //Простое высчитывание точки угла.
+                        unsigned int corner_size = (i - corner_start);
+                        if( corner_size > max_corner_size){
+                            unsigned char corners_count = corner_size/max_corner_size + 1;
+                            
+                            for (unsigned char ii=1; ii<corners_count+1; ii++){
+                                object_corners_points[object_corners_points_length] = corner_start + corner_size*(ii)/corners_count - corner_size/corners_count/2;
+                                object_corners_points_length ++;
+                            }
+
+                        }else{
+                            object_corners_points[object_corners_points_length] = (corner_start + i)/2;
+                            object_corners_points_length ++;
+                        }
+                        
+                    }
+                }
+            }
+
+            isCorner_last = isCorner;
+            
+            if(i==object_points_length-1 && isCorner && corner_first_end!=0){
+                // Последняя точка, обычно попадает на угол, потому что обычно она попадает обычно на разрыв угла
+                unsigned int corner_size = object_points_length - 1 - corner_start + corner_first_end;
+                if( corner_size > max_corner_size){
+                    unsigned char corners_count = corner_size/max_corner_size + 1;
+
+                    //console_print("object_points_length", object_points_length);
+                    //console_print("corner_start", corner_start);
+                    
+                    for (unsigned char ii=1; ii<corners_count+1; ii++){
+                        int sup_point_position = int_in_array(corner_start + corner_size*(ii)/corners_count - corner_size/corners_count/2, object_points_length-1);
+
+                        //console_print("point", sup_point_position);
+
+                        object_corners_points[object_corners_points_length] = sup_point_position;
+                        object_corners_points_length ++;
+                    }
+
+                    //console_print("corner_first_end", corner_first_end);
+
+                }else{
+                    int last_point = (corner_start + (corner_first_end+(object_points_length)))/2;
+                    if (last_point>object_points_length-1) last_point -= object_points_length;
+                    object_corners_points[object_corners_points_length] = last_point;
+                    object_corners_points_length ++;
+                }
+                
+                
+            }
+        }
+
+        // Возьмем и проверим, а вдруг фигура - это идеальный круг и в нем сосвем нет углов
+        // В этом случае насильно разобьем его на участки, приняв как один большой угол
+        if(object_corners_points_length==0){
+            int point_distance = (object_points_length-1)/max_corner_size;
+
+            if((object_points_length-1)%max_corner_size!=0){
+                object_corners_points[object_corners_points_length] = object_points_length-1;
+                object_corners_points_length ++;
+            }
+            
+            for(int i=0; i<object_points_length-1; i+=point_distance){
+                object_corners_points[object_corners_points_length] = i;
+                object_corners_points_length ++;
+            }
+        }
+
+        // Выведем все точки углов
+        for (int i =0; i<object_corners_points_length; i++){
+
+            //console_print("posint position", object_corners_points[i]);
+
+            xpoint          = object_points[object_corners_points[i]*2];
+            ypoint          = object_points[object_corners_points[i]*2 + 1];
+
+            unsigned char cross_length = 2;
+            #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+                drawLine(data, data_width, data_height, color_near_red, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                drawLine(data, data_width, data_height, color_near_red, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+            #endif
+
+            #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_draw_contour
+                if(i!=0){
+                    xpoint_1 = object_points[object_corners_points[i-1]*2];
+                    ypoint_1 = object_points[object_corners_points[i-1]*2 + 1];
+                }else{
+                    xpoint_1 = object_points[object_corners_points[object_corners_points_length-1]*2];
+                    ypoint_1 = object_points[object_corners_points[object_corners_points_length-1]*2 + 1];
+                }
+                drawLine(data, data_width, data_height, color_pink, xpoint, ypoint, xpoint_1, ypoint_1);
+            #endif
+            
+        }
+
+        #ifdef on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE_debug
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+            drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+        #endif
+    }
 }
 
+//#define on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+#define on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_draw_contour
+void on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    unsigned int x_pos = weight_x;
+    unsigned int y_pos = weight_y;
+
+    int margin_frame = 0;
+
+    if (perimeter>100 && perimeter<200){
+        console_print("----------------- NEW OBJECT -----------------");
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME +                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+       console_print("perimeter", perimeter);
+
+        char direction = 2;
+        bool continue_loop = true;
+        
+        int x = start_x;
+        int y = start_y;
+
+        
+
+        unsigned char rounding = 3; // Расстония окружности, по которой будет происходить замер сторон
+        unsigned int max_corner_size = rounding*2; // Максимальный размер угло в точках, если область больше, то разбивается на 2 или более углов. 2 или более
+        unsigned int max_corner_length = 10; //Длина угла в точка контура
+        float corner_distance_difference = 1.1; // Разница сторон замера теругольника после которой считается что искривление является углом
+
+        unsigned int step_px = 2; // Длина шага замера 
+        unsigned int max_points_for_object_buffer = perimeter/step_px+1; // Максимальное количество точек в буфере для каждого контура 
+        unsigned int current_step;
+        //console_print("step_px", step_px);
+
+        // Max and min points
+        unsigned int object_points[max_points_for_object_buffer*2]; // Инициализируем буффер точек максимума
+        unsigned int object_corners_points[max_points_for_object_buffer/max_corner_length + 1]; // Инициализируем буффер точек углов
+        /*
+            Структура массивов:
+            0 - координата X
+            1 - координата Y
+        */
+        int object_points_length = 0; // Количество точек добавленных на данный момент
+        int object_corners_points_length = 0; // Количество точек добавленных на данный момент
+
+        while (continue_loop){
+            
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK +                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            if(current_step>=step_px){
+
+                object_points[object_points_length*2] = x;
+                object_points[object_points_length*2 + 1] = y;
+
+                // Подготавливаем преременные для следующей проверки
+                current_step = 0;
+                object_points_length ++;
+            }
+
+            current_step++;
+
+            /*
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # #                                  MAX MIN CHECK -                                  # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            */
+
+            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
+
+            char check_direction = direction - 1;
+            if(check_direction<1) check_direction = 4;
+
+            for(unsigned char i=0; i<4; i++){
+                
+                unsigned char r = 0;
+                unsigned char g = 0;
+                unsigned char b = 0;
+
+                int check_x = x;
+                int check_y = y;
+
+                if(check_direction==1){
+                    check_x++;
+                }else if(check_direction==2){
+                    check_y--;
+                }else if(check_direction==3){
+                    check_x--;
+                }else if(check_direction==4){
+                    check_y++;
+                }
+
+                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
+
+                if(g==255 || r==255){
+                    x = check_x;
+                    y = check_y;
+
+                    direction = check_direction;
+
+                    break;
+                }
+
+                if(r==0 && g==0 && b==255){
+                    continue_loop = false;
+                }
+
+                check_direction ++;
+                if(check_direction>4)check_direction=1;
+            }
+
+            if(x>data_width || x<0) continue_loop = false;
+            if(y>data_height || y<0) continue_loop = false;
+
+            if(x==start_x && y==start_y){
+                continue_loop = false;
+            }
+
+        }
+
+
+        /*
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # #                             FIND CIRCUIT SECOND TIME -                            # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        */
+
+        unsigned int xpoint = 0; // Текущая точка проверки Х
+        unsigned int ypoint = 0; // Текущая точка проверки Y
+
+        unsigned int xpoint_1; // Точка до точки проверки Х
+        unsigned int ypoint_1; // Точка до точки проверки Х
+        unsigned int xpoint_2; // Точка после точки проверки Х
+        unsigned int ypoint_2; // Точка после точки проверки Х
+
+        float distance; // Расстояние от крайних точек
+        float distance2; // Расстояние по сторонам равнобедренного треугольника
+
+        bool isCorner = true;       // Хранит состояние условия точки (является ли точка углом)
+        bool isCorner_last = true;  // Хранит состояние условия прошлой точки
+
+        //Вспомогательныйе переменные для поиска центра угла
+        int corner_first_end    = 0;
+        int corner_start        = 0;
+        int corner_end          = 0;
+
+        // Уберем те точки, которые имеет минимальное отклонение от соседних
+        for(int i=0; i<object_points_length; i++){
+
+            xpoint          = object_points[i*2];
+            ypoint          = object_points[i*2 + 1];
+
+            xpoint_1 = object_points[ int_in_array((i-rounding)*2,      (object_points_length-1)*2) ];
+            ypoint_1 = object_points[ int_in_array((i-rounding)*2 + 1,  (object_points_length-1)*2) ];
+            xpoint_2 = object_points[ int_in_array((i+rounding)*2,      (object_points_length-1)*2) ];
+            ypoint_2 = object_points[ int_in_array((i+rounding)*2 + 1,  (object_points_length-1)*2) ];
+            
+            distance = distance_between_point(xpoint_1, ypoint_1, xpoint_2, ypoint_2);
+            distance2 = distance_between_point(xpoint, ypoint, xpoint_2, ypoint_2) + distance_between_point(xpoint_1, ypoint_1, xpoint, ypoint);
+
+            isCorner = (distance2/distance)>corner_distance_difference; // Вот и условие по которому определяем является ли точка частью угла
+
+            // Сравнивая расстояние между основания равноберженного трегольника и длины его равных сторон, можно понять угол кривизны контура
+            if(isCorner){
+                // Изгиб достаточно кривой, чтоб считать его углом
+                unsigned char cross_length = 2;
+
+                #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+                    drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                    drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                #endif
+
+                if(isCorner!=isCorner_last){
+                    // Начало угла
+                    #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                    #endif
+
+                    //console_print("Start of corner", i);
+                    corner_start = i;
+                }
+            }else{
+                // Изгиб НЕ достаточно кривой, чтоб считать его углом
+                unsigned char cross_length = 2;
+
+                #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+                    drawLine(data, data_width, data_height, color_gray, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                    drawLine(data, data_width, data_height, color_gray, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                #endif
+
+                if(isCorner!=isCorner_last){
+                    // Конец угла
+                    #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                        drawLine(data, data_width, data_height, color_near_blue, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+                    #endif
+
+                    //console_print("End of corner", i);
+
+                    if(corner_start==0){
+                        corner_first_end = i;
+                        //Этот угол надо будет заполнить в конце, так как тут мы видимо только его начало
+                    }
+                    else{
+                        //Простое высчитывание точки угла.
+                        unsigned int corner_size = (i - corner_start);
+                        if( corner_size > max_corner_size){
+                            unsigned char corners_count = corner_size/max_corner_size + 1;
+                            
+                            for (unsigned char ii=1; ii<corners_count+1; ii++){
+                                object_corners_points[object_corners_points_length] = corner_start + corner_size*(ii)/corners_count - corner_size/corners_count/2;
+                                object_corners_points_length ++;
+                            }
+
+                        }else{
+                            object_corners_points[object_corners_points_length] = (corner_start + i)/2;
+                            object_corners_points_length ++;
+                        }
+                        
+                    }
+                }
+            }
+
+            isCorner_last = isCorner;
+            
+            if(i==object_points_length-1 && isCorner && corner_first_end!=0){
+                // Последняя точка, обычно попадает на угол, потому что обычно она попадает обычно на разрыв угла
+                unsigned int corner_size = object_points_length - 1 - corner_start + corner_first_end;
+                if( corner_size > max_corner_size){
+                    unsigned char corners_count = corner_size/max_corner_size + 1;
+
+                    //console_print("object_points_length", object_points_length);
+                    //console_print("corner_start", corner_start);
+                    
+                    for (unsigned char ii=1; ii<corners_count+1; ii++){
+                        int sup_point_position = int_in_array(corner_start + corner_size*(ii)/corners_count - corner_size/corners_count/2, object_points_length-1);
+
+                        //console_print("point", sup_point_position);
+
+                        object_corners_points[object_corners_points_length] = sup_point_position;
+                        object_corners_points_length ++;
+                    }
+
+                    //console_print("corner_first_end", corner_first_end);
+
+                }else{
+                    int last_point = (corner_start + (corner_first_end+(object_points_length)))/2;
+                    if (last_point>object_points_length-1) last_point -= object_points_length;
+                    object_corners_points[object_corners_points_length] = last_point;
+                    object_corners_points_length ++;
+                }
+                
+                
+            }
+        }
+
+        // Возьмем и проверим, а вдруг фигура - это идеальный круг и в нем сосвем нет углов
+        // В этом случае насильно разобьем его на участки, приняв как один большой угол
+        if(object_corners_points_length==0){
+            int point_distance = (object_points_length-1)/max_corner_size;
+
+            if((object_points_length-1)%max_corner_size!=0){
+                object_corners_points[object_corners_points_length] = object_points_length-1;
+                object_corners_points_length ++;
+            }
+            
+            for(int i=0; i<object_points_length-1; i+=point_distance){
+                object_corners_points[object_corners_points_length] = i;
+                object_corners_points_length ++;
+            }
+        }
+
+        // Выведем все точки углов
+        for (int i =0; i<object_corners_points_length; i++){
+
+            //console_print("posint position", object_corners_points[i]);
+
+            xpoint          = object_points[object_corners_points[i]*2];
+            ypoint          = object_points[object_corners_points[i]*2 + 1];
+
+            unsigned char cross_length = 2;
+            #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+                drawLine(data, data_width, data_height, color_near_red, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
+                drawLine(data, data_width, data_height, color_near_red, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
+            #endif
+
+            #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_draw_contour
+                if(i!=0){
+                    xpoint_1 = object_points[object_corners_points[i-1]*2];
+                    ypoint_1 = object_points[object_corners_points[i-1]*2 + 1];
+                }else{
+                    xpoint_1 = object_points[object_corners_points[object_corners_points_length-1]*2];
+                    ypoint_1 = object_points[object_corners_points[object_corners_points_length-1]*2 + 1];
+                }
+                drawLine(data, data_width, data_height, color_pink, xpoint, ypoint, xpoint_1, ypoint_1);
+            #endif
+            
+        }
+
+        #ifdef on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE_debug
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
+
+            drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
+            drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
+        #endif
+    }
+}
 
 #define on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS_debug
 void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
@@ -1481,228 +2135,6 @@ void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(unsigned char* data, int x, i
     
 }
 
-void on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS_2(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
-    int data_width = getWidth(data);
-    int data_height = getHeight(data);
-
-    unsigned int x_pos = weight_x;
-    unsigned int y_pos = weight_y;
-
-    int margin_frame = 0;
-
-    
-
-    if (perimeter>200 && x_pos>margin_frame && y_pos>margin_frame && x_pos<data_width-margin_frame && y_pos<data_height-margin_frame){
-        console_print("----------------- NEW OBJECT -----------------");
-
-        /*
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # #                             FIND CIRCUIT SECOND TIME +                            # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        */
-
-        char direction = 2;
-        bool continue_loop = true;
-        
-        int x = start_x;
-        int y = start_y;
-
-        int x_last = x;
-        int y_last = y;
-
-        float angle = 0;
-        float angle_last = 0;
-
-        float max_min_angle_difference = 5.0; // Минимальная разница углов
-        float max_min_angle_difference_2 = 80.0; // Минимальная разница углов для 2-го сглаживания
-        unsigned char check_max_min_every_step = 4; // проверять максимум и минимум каждые N шагов
-        unsigned char check_max_min_current_step = 0; // счетчик шагов
-
-        // Max and min points
-        int max_min_points_size = 200; //Количество точек максимума и минимума, которые будет хранить в буффере
-        int max_min_points_array[max_min_points_size*2]; // Инициализируем буффер точек максимума
-        /*
-            Структура массива:
-            0 - координата X
-            1 - координата Y
-        */
-        int max_min_points_length = 0; // Количество точек добавленных на данный момент
-
-        
-
-        while (continue_loop){
-            
-            /*
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # #                                  MAX MIN CHECK +                                  # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            */
-
-            if(check_max_min_current_step>=check_max_min_every_step){
-                //length_from_weight_center = (float)sqrt( (long)pow((unsigned long)abs_i(x - (int)weight_x), 2) + (unsigned long)pow((unsigned long)abs_i(y -(int) weight_y), 2));
-
-                angle = atan2((float)(y-y_last), (float)(x-x_last))*180.0/3.1415926535;
-                
-                //console_print(abs(angle-angle_last));
-
-                if(abs(angle-angle_last)>max_min_angle_difference && 360 - abs(angle-angle_last) > max_min_angle_difference ){
-                    if(max_min_points_length+1<max_min_points_size){
-                        max_min_points_array[max_min_points_length*2]       = x_last;
-                        max_min_points_array[max_min_points_length*2 + 1]   = y_last;
-                        max_min_points_length++;
-                    }
-                }
-
-                // Подготавливаем преременные для следующей проверки
-                x_last = x;
-                y_last = y;
-
-                check_max_min_current_step = 0;
-                angle_last = angle;
-                //console_print("Check step");   
-            }
-
-            check_max_min_current_step++;
-
-            /*
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # #                                  MAX MIN CHECK -                                  # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-            */
-
-            set_pixel_rgb(data, data_width, data_height, x, y, 255, 0, 0);
-
-            char check_direction = direction - 1;
-            if(check_direction<1) check_direction = 4;
-
-            for(unsigned char i=0; i<4; i++){
-                
-                unsigned char r = 0;
-                unsigned char g = 0;
-                unsigned char b = 0;
-
-                int check_x = x;
-                int check_y = y;
-
-                if(check_direction==1){
-                    check_x++;
-                }else if(check_direction==2){
-                    check_y--;
-                }else if(check_direction==3){
-                    check_x--;
-                }else if(check_direction==4){
-                    check_y++;
-                }
-
-                get_pixel_rgb(data, data_width, data_height, check_x, check_y, r, g, b);
-
-                if(g==255 || r==255){
-                    x = check_x;
-                    y = check_y;
-
-                    direction = check_direction;
-
-                    break;
-                }
-
-                if(r==0 && g==0 && b==255){
-                    continue_loop = false;
-                }
-
-                check_direction ++;
-                if(check_direction>4)check_direction=1;
-            }
-
-            if(x>data_width || x<0) continue_loop = false;
-            if(y>data_height || y<0) continue_loop = false;
-
-            if(x==start_x && y==start_y){
-                continue_loop = false;
-            }
-
-        }
-
-
-        /*
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # #                             FIND CIRCUIT SECOND TIME -                            # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        */
-
-        int xpoint = 0;
-        int ypoint = 0;
-
-        // Выведем на экран первичные точки алгоритма поиска углов
-        for(int i=0; i<max_min_points_length; i++){
-            xpoint = max_min_points_array[i*2];
-            ypoint = max_min_points_array[i*2 + 1];
-
-            unsigned char cross_length = 2;
-            drawLine(data, data_width, data_height, color_near_green, xpoint-cross_length, ypoint, xpoint+cross_length, ypoint);
-            drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-cross_length, xpoint, ypoint+cross_length);
-        }
-
-        //console_print("max_min_points_length");
-        //console_print(max_min_points_length);
-
-        // Начинаем вторичное сглаживание обходя массив точек, 
-        //при этом удаляя точки пока между каждым отрезком не будет угол в max_min_angle_difference_2 градусов
-        int xpoint_last = 0;
-        int ypoint_last = 0;
-        angle_last = 0;
-
-        for(int i=1; i<max_min_points_length; i++){
-            xpoint_last     = max_min_points_array[(i-1)*2];
-            ypoint_last     = max_min_points_array[(i-1)*2 + 1];
-            xpoint          = max_min_points_array[i*2];
-            ypoint          = max_min_points_array[i*2 + 1];
-
-            angle = atan2((float)(xpoint-xpoint_last), (float)(ypoint-ypoint_last))*180.0/3.1415926535;
-
-            //console_print(abs(angle-angle_last));
-            if(abs(angle-angle_last)>max_min_angle_difference_2 && 360 - abs(angle-angle_last) > max_min_angle_difference_2 ){
-                /*
-                if(max_min_points_length+1<max_min_points_size){
-                    max_min_points_array[max_min_points_length*2]       = x_last;
-                    max_min_points_array[max_min_points_length*2 + 1]   = y_last;
-                    max_min_points_length++;
-                }
-                */
-
-                unsigned char cross_length = 4;
-                drawLine(data, data_width, data_height, color_near_red, xpoint_last-cross_length, ypoint_last, xpoint_last+cross_length, ypoint_last);
-                drawLine(data, data_width, data_height, color_near_red, xpoint_last, ypoint_last-cross_length, xpoint_last, ypoint_last+cross_length);
-
-                angle_last = angle;
-            }else{
-                max_min_points_array[(i-1)*2]       = 0;
-                max_min_points_array[(i-1)*2 + 1]   = 0;
-            }
-
-            
-            //drawLine(data, data_width, data_height, color_near_green, xpoint-10, ypoint, xpoint+10, ypoint);
-            //drawLine(data, data_width, data_height, color_near_green, xpoint, ypoint-10, xpoint, ypoint+10);
-        }
-
-
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos, x_pos+10, y_pos);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos+1, x_pos+10, y_pos+1);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-10, y_pos-1, x_pos+10, y_pos-1);
-
-        drawLine(data, data_width, data_height, color_darkgray, x_pos, y_pos-10, x_pos, y_pos+10);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos+1, y_pos-10, x_pos+1, y_pos+10);
-        drawLine(data, data_width, data_height, color_darkgray, x_pos-1, y_pos-10, x_pos-1, y_pos+10);
-    }
-}
-
 // Вызывается когда найден новый периметр для более детального разбора
 void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, unsigned int weight_y, long perimeter, int max_x, int max_y, int min_x, int min_y, int start_x, int start_y, int obj_detection_type){
 
@@ -1710,8 +2142,7 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
         on_object_found_ANY_OBJECT(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else if(obj_detection_type==EXAMPLE_DETECT_DATAMATRIX_EDGE){
-        //on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
-        on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
+        on_object_found_EXAMPLE_DETECT_DATAMATRIX_EDGE(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
     }else if(obj_detection_type==EXAMPLE_GET_GEOMETRY_PARAMS){
         on_object_found_EXAMPLE_GET_GEOMETRY_PARAMS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
@@ -1725,6 +2156,8 @@ void on_object_found(unsigned char* data, int x, int y, unsigned int weight_x, u
     }else if(obj_detection_type==EXAMPLE_DETECT_OBJECT_CORNERS){
         on_object_found_EXAMPLE_DETECT_OBJECT_CORNERS(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
 
+    }else if(obj_detection_type==EXAMPLE_DECODE_LINEAR_BARCODE){
+        on_object_found_EXAMPLE_DECODE_LINEAR_BARCODE(data, x, y, weight_x, weight_y, perimeter, max_x, max_y, min_x, min_y, start_x, start_y, obj_detection_type);
     }else{
         console_print("Not specified object detected");
     }
@@ -1759,12 +2192,14 @@ void example_count_objects                  (unsigned char* data);
 void example_get_object_width               (unsigned char* data);
 void example_get_object_geometry_params     (unsigned char* data);
 void example_detect_datamatrix_edge         (unsigned char* data);
+void example_decode_linear_barcode          (unsigned char* data);
+void example_simple_decode_linear_barcode   (unsigned char* data);
 
 void cv_applyFilters(unsigned char* data){
 
     // Очищает не контрастные зоны
     
-    example_detect_datamatrix_edge(data);
+    example_simple_decode_linear_barcode(data);
 
     /*
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1941,53 +2376,92 @@ void example_detect_datamatrix_edge(unsigned char* data){
     int data_width = getWidth(data);
     int data_height = getHeight(data);
 
-    
-    /*
-    unsigned int margin = 2;
-    drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
-    drawRect(data, data_width, data_height, color_white, 0, 0, margin, data_height-1, true);
-    drawRect(data, data_width, data_height, color_white, 0, 0, data_width - 1, margin, true);
-    drawRect(data, data_width, data_height, color_white, 0, data_height - 1 - margin, data_width-1, data_height-1, true);
-    drawRect(data, data_width, data_height, color_white, data_width - 1 - margin, 0, data_width-1, data_height-1, true);
-    */
-    
-    // Поиск возможных штрих кодов на картинке
-
-    /* 
-    filter_blur_filter(
+    filter_barcode(
         data, 
-        1              // Количество циклов размытия
-    );
-
-    filter_barcode(data, 
-        10,             // Ширина и высота зона замера контраста
+        40,             // Ширина и высота зона замера контраста
         50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
     );
-    // */
+        
+    // Определяет объекты
+    detect_objects(
+        data,
+        EXAMPLE_DETECT_DATAMATRIX_EDGE // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
 
-    
-    /*
-    filter_blur_filter(
-        data, 
-        2              // Количество циклов размытия
-    );*/
+    console_print("finished...");
+}
+
+void example_detect_object_corners(unsigned char* data){    
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
 
     filter_blackWhite(
         data, 
         190             // Яркость 0..255
     );
-    
-    
+        
     // Определяет объекты
-    /* */
     detect_objects(
         data,
         EXAMPLE_DETECT_OBJECT_CORNERS // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
     );
 
-    // */
     console_print("finished...");
 }
+
+void example_decode_linear_barcode(unsigned char* data){    
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    filter_barcode(
+        data, 
+        40,             // Ширина и высота зона замера контраста
+        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
+        
+    // Определяет объекты
+    detect_objects(
+        data,
+        EXAMPLE_DECODE_LINEAR_BARCODE // Тип поиска, смотрите раздел OBJECT DETECTION TYPES
+    );
+
+    console_print("finished...");
+}
+
+void example_simple_decode_linear_barcode(unsigned char* data){    
+
+    int data_width = getWidth(data);
+    int data_height = getHeight(data);
+
+    filter_barcode(
+        data, 
+        40,             // Ширина и высота зона замера контраста
+        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+    );
+
+    // Рисуем красную линию, показывающую линию распознования штрих кода
+    for(int i=0; i<data_width; i++){
+        unsigned char r;
+        unsigned char g;
+        unsigned char b;
+
+        unsigned char line_width = 6;
+        for(int ii=0; ii<line_width; ii++){
+            get_pixel_rgb(data, data_width, data_height, i, data_height/2 - line_width/2 + ii, r, g, b);
+
+            if(r==0 && g==0 && b==0){
+                set_pixel_rgb(data, data_width, data_height, i, data_height/2 - line_width/2 + ii, 170, 0, 0);
+            }else{
+                set_pixel_rgb(data, data_width, data_height, i, data_height/2 - line_width/2 + ii, 255, 140, 140);
+            }
+        }
+    }
+        
+    console_print("finished...");
+}
+
 
 void example_count_objects(unsigned char* data){
 
@@ -2073,3 +2547,4 @@ void example_get_watch_time(unsigned char* data){
     );
 
 }
+

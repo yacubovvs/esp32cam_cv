@@ -68,7 +68,7 @@ void handleJpg()
 
 void handleMjpeg()
 {
-  if (!esp32cam::Camera.changeResolution(hiRes)) {
+  if (!esp32cam::Camera.changeResolution(vgaRes)) {
     console_print("SET-HI-RES FAIL");
   }
 
