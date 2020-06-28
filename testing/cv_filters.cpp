@@ -2247,6 +2247,7 @@ void cv_applyFilters(unsigned char* data){
         true            // true - рисовать на результирующем рисунке линии замеров
     );
 
+    // Центрально взвешенное изменение контраста
     filter_blackWhite_centralAreaWieght(
         data, 
         120,             // Ширина и высота зона замера контраста
@@ -2281,7 +2282,8 @@ void cv_applyFilters(unsigned char* data){
         true    // false - превращает в черный, true - в белый
     );
 
-    filter_toGray(data);    // Перевести картинку в оттенки серого
+    // Перевести картинку в отенки серого
+    filter_toGray(data);    // Перевести картинку в отенки серого по всем спектрам
     filter_toGray(
         data, 
         0,                  // Перевести в серый по красному спектру 0..1
@@ -2441,24 +2443,19 @@ void example_simple_decode_linear_barcode(unsigned char* data){
         50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
     );
 
-    unsigned char dublicates = 10; // Сколько раз будет посторятся замер линии (необходимо при линии плохого качества)
-    if(dublicates%2==0) dublicates+=1; // Число должно быть нечетное, чтобы точнее определять линии
-
-    bool arr_line[data_width*dublicates];
+    bool arr_line[data_width];
     //Отправляем данные на рсшифровку
     for(int i=0; i<data_width; i++){
         unsigned char r;
         unsigned char g;
         unsigned char b;
 
-        for(int ii=0; ii<dublicates; ii++){
-            get_pixel_rgb(data, data_width, data_height, i, data_height/2 - dublicates/2 + ii, r, g, b);
-            arr_line[i + data_width*ii] = (r==0 && g==0 && b==0);
-        }
+        get_pixel_rgb(data, data_width, data_height, i, data_height/2, r, g, b);
+        arr_line[i] = (r==0 && g==0 && b==0);
 
     }
 
-    detect_linear_barcode(arr_line, data_width, dublicates);
+    detect_linear_barcode(arr_line, data_width);
 
     // Рисуем красную линию, показывающую линию распознования штрих кода
     for(int i=0; i<data_width; i++){
