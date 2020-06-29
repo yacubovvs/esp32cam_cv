@@ -65,7 +65,27 @@ void console_print(String str){
   }
 }
 
+void console_print(int num){  
+}
 
+void console_print(String string, int num){  
+}
+
+void console_print_result_int_array(unsigned char *arr, int length){  
+  String output = "";
+  for (int i=0; i<length; i++){
+    int val = arr[i];
+    if(val<10) output += "0";
+    
+    if(val>99){
+      output += "XX";
+    }else{
+      output += String(val);  
+    }
+
+    output += " ";
+  }
+}
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

@@ -1,5 +1,5 @@
 #define bmp_header_size     54
-#include "linear_barcode_detect.cpp"
+#include "linear_barcode_detect_code128.cpp"
 
 #ifndef arduino_device
     #include <math.h>
@@ -2452,7 +2452,7 @@ void example_simple_decode_linear_barcode(unsigned char* data){
         data, 
         40,             // Ширина и высота зона замера контраста
         50,             // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
-        110
+        100
     );
 
     bool arr_line[data_width];
