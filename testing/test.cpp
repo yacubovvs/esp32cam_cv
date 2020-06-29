@@ -1,107 +1,196 @@
-#include <math.h>
 #include <stdio.h>
 
+/*
+Num     KOI-7_CodeA     KOI-7_CodeB     CodeC       K_Combination       E_normal_codes
+*/
 
-float getDistance_between_line_and_point_(float line_point1_x, float line_point1_y, float line_point2_x, float line_point2_y, float point_x, float point_y){
-    float k1 = -(line_point1_y-line_point2_y)/(line_point2_x-line_point1_x);
-    printf("k1: %f \n", k1);
+#define FNC1        0xFF
+#define FNC2        0xFE
+#define FNC3        0xFD
+#define FNC4        0xFC
+#define Shift       0xFB
+#define CODE_А      0xFA
+#define CODE_В      0xF9
+#define CODE_C      0xF7
 
-    float b1 = -(line_point1_x*line_point2_y - line_point2_x*line_point1_y)/(line_point2_x-line_point1_x);
-    printf("angle: %f \n", b1);
+#define Start_A     0xF6
+#define Start_В     0xF5
+#define Start_C     0xF4
 
-    printf("Graph1:\n"); 
-    
-    for(int x=0; x<10; x++){
-        printf("%d", x);
-        printf("               "); 
-    }
-    
-    printf("\n"); 
-    
-    
-    for(int x=0; x<10; x++){
+#define Stop        0xF3
+#define Stop_A      0xF2
+#define Stop_B      0xF1
 
-        float y = k1*((float)x) + b1;
+unsigned char code128_char_codes[] = {
+    32,             32,              0,         2, 1, 2, 2, 2, 2,       3, 3, 4, 4, 
+    33,             33,              1,         2, 2, 2, 1, 2, 2,       4, 4, 3, 3,
+    34,             34,              2,         2, 2, 2, 2, 2, 1,       4, 4, 4, 4,
+    35,             35,              3,         1, 2, 1, 2, 2, 3,       3, 3, 3, 4,
+    36,             36,              4,         1, 2, 1, 3, 2, 2,       3, 3, 4, 5,
+    37,             37,              5,         1, 3, 1, 2, 2, 2,       4, 4, 3, 4,
+    38,             38,              6,         1, 2, 2, 2, 1, 3,       3, 4, 4, 3,
+    39,             39,              7,         1, 2, 2, 3, 1, 2,       3, 4, 5, 4,
+    40,             40,              8,         1, 3, 2, 2, 1, 2,       4, 5, 4, 3,
+    41,             41,              9,         2, 2, 1, 2, 1, 3,       4, 3, 3, 3,
+    42,             42,             10,         2, 2, 1, 3, 1, 2,       4, 3, 4, 4,
+    43,             43,             11,         2, 3, 1, 2, 1, 2,       5, 4, 3, 3,
+    44,             44,             12,         1, 1, 2, 2, 3, 2,       2, 3, 4, 5,
+    45,             45,             13,         1, 2, 2, 1, 3, 2,       3, 4, 3, 4,
+    46,             46,             14,         1, 2, 2, 2, 3, 1,       3, 4, 4, 5,
+    47,             47,             15,         1, 1, 3, 2, 2, 2,       2, 4, 5, 4,
+    48,             48,             16,         1, 2, 3, 1, 2, 2,       3, 6, 4, 3,
+    49,             49,             17,         1, 2, 3, 2, 2, 1,       3, 5, 5, 4,
+    50,             50,             18,         2, 2, 3, 2, 1, 1,       4, 5, 5, 3,
+    51,             51,             19,         2, 2, 1, 1, 3, 2,       4, 3, 2, 4,
+    52,             52,             20,         2, 2, 1, 2, 3, 1,       4, 3, 3, 5,
+    53,             53,             21,         2, 1, 3, 2, 1, 2,       3, 4, 5, 3,
+    54,             54,             22,         2, 2, 3, 1, 1, 2,       4, 6, 4, 2,
+    55,             55,             23,         3, 1, 2, 1, 3, 1,       4, 3, 3, 4,
+    56,             56,             24,         3, 1, 1, 2, 2, 2,       4, 2, 3, 4,
+    57,             57,             25,         3, 2, 1, 1, 2, 2,       6, 3, 2, 3,
+    58,             58,             26,         3, 2, 1, 2, 2, 1,       5, 3, 3, 4,
+    59,             59,             27,         3, 1, 2, 2, 1, 2,       4, 3, 4, 3,
+    60,             60,             28,         3, 2, 2, 1, 1, 2,       6, 4, 3, 2,
+    61,             61,             29,         3, 2, 2, 2, 1, 1,       5, 4, 4, 3,
+    62,             62,             30,         2, 1, 2, 1, 2, 3,       4, 4, 4, 4,
+    63,             63,             31,         2, 1, 2, 3, 2, 1,       3, 3, 4, 4,
+    64,             64,             32,         2, 3, 2, 1, 2, 1,       5, 5, 3, 3,
+    65,             65,             33,         1, 1, 1, 3, 2, 3,       2, 2, 4, 5,
+    66,             66,             34,         1, 3, 1, 1, 2, 3,       5, 5, 2, 4,
+    67,             67,             35,         1, 3, 1, 3, 2, 1,       3, 3, 3, 4,
+    68,             68,             36,         1, 1, 2, 3, 1, 3,       2, 3, 5, 4,
+    69,             69,             37,         1, 3, 2, 1, 1, 3,       5, 6, 4, 2,
+    70,             70,             38,         1, 3, 2, 3, 1, 1,       3, 4, 4, 3,
+    71,             71,             39,         2, 1, 1, 3, 1, 3,       3, 2, 4, 4,
+    72,             72,             40,         2, 3, 1, 1, 1, 3,       6, 5, 2, 2,
+    73,             73,             41,         2, 3, 1, 3, 1, 1,       4, 3, 3, 3,
+    74,             74,             42,         1, 1, 2, 1, 3, 3,       2, 4, 4, 5,
+    75,             75,             43,         1, 1, 2, 3, 3, 1,       2, 3, 4, 5,
+    76,             76,             44,         1, 3, 2, 1, 3, 1,       4, 5, 3, 4,
+    77,             77,             45,         1, 1, 3, 1, 2, 3,       2, 5, 5, 4,
+    78,             78,             46,         1, 1, 3, 3, 2, 1,       2, 3, 5, 4,
+    79,             79,             47,         1, 3, 3, 1, 2, 1,       4, 6, 4, 3,
+    80,             80,             48,         3, 1, 3, 1, 2, 1,       4, 4, 4, 3,
+    81,             81,             49,         2, 1, 1, 3, 3, 1,       3, 2, 3, 5,
+    82,             82,             50,         2, 3, 1, 1, 3, 1,       5, 4, 2, 4,
+    83,             83,             51,         2, 1, 3, 1, 1, 3,       4, 5, 5, 2,
+    84,             84,             52,         2, 1, 3, 3, 1, 1,       3, 3, 5, 3,
+    85,             85,             53,         2, 1, 3, 1, 3, 1,       3, 4, 4, 4,
+    86,             86,             54,         3, 1, 1, 1, 2, 3,       5, 2, 2, 4,
+    87,             87,             55,         3, 1, 1, 3, 2, 1,       3, 2, 3, 4,
+    88,             88,             56,         3, 3, 1, 1, 2, 1,       6, 4, 2, 3,
+    89,             89,             57,         3, 1, 2, 1, 1, 3,       5, 4, 4, 2,
+    90,             90,             58,         3, 1, 2, 3, 1, 1,       3, 3, 4, 3,
+    91,             91,             59,         3, 3, 2, 1, 1, 1,       6, 5, 3, 2,
+    92,             92,             60,         3, 1, 4, 1, 1, 1,       4, 5, 5, 2,
+    93,             93,             61,         2, 2, 1, 4, 1, 1,       3, 2, 4, 4,
+    94,             94,             62,         4, 3, 1, 1, 1, 1,       7, 4, 2, 2,
+    95,             95,             63,         1, 1, 1, 2, 2, 4,       2, 2, 4, 5,
+    0,              96,             64,         1, 1, 1, 4, 2, 2,       2, 2, 4, 5,
+    1,              97,             65,         1, 2, 1, 1, 2, 4,       4, 4, 3, 4,
+    2,              98,             66,         1, 2, 1, 4, 2, 1,       2, 2, 4, 5,
+    3,              99,             67,         1, 4, 1, 1, 2, 2,       6, 6, 2, 3,
+    4,              100,            68,         1, 4, 1, 2, 2, 1,       5, 5, 3, 4,
+    5,              101,            69,         1, 1, 2, 2, 1, 4,       2, 4, 5, 4,
+    6,              102,            70,         1, 1, 2, 4, 1, 2,       2, 3, 5, 4,
+    7,              103,            71,         1, 2, 2, 1, 1, 4,       4, 6, 4, 3,
+    8,              104,            72,         1, 2, 2, 4, 1, 1,       2, 3, 5, 4,
+    9,              105,            73,         1, 4, 2, 1, 1, 2,       6, 7, 3, 2,
+    10,             106,            74,         1, 4, 2, 2, 1, 1,       5, 6, 4, 3,
+    11,             107,            75,         2, 4, 1, 2, 1, 1,       6, 5, 3, 3,
+    12,             108,            76,         2, 2, 1, 1, 1, 4,       6, 4, 3, 3,
+    13,             109,            77,         4, 1, 3, 1, 1, 1,       5, 4, 4, 2,
+    14,             110,            78,         2, 4, 1, 1, 1, 2,       7, 6, 2, 2,
+    15,             111,            79,         1, 3, 4, 1, 1, 1,       4, 7, 5, 2,
+    16,             112,            80,         1, 1, 1, 2, 4, 2,       2, 2, 3, 6,
+    17,             113,            81,         1, 2, 1, 1, 4, 2,       3, 3, 2, 6,
+    13,             114,            82,         1, 2, 1, 2, 4, 1,       3, 3, 3, 6,
+    19,             115,            83,         1, 1, 4, 2, 1, 2,       2, 5, 6, 3,
+    20,             116,            84,         1, 2, 4, 1, 1, 2,       3, 7, 6, 2,
+    21,             117,            85,         1, 2, 4, 2, 1, 1,       3, 6, 6, 3,
+    22,             118,            86,         4, 1, 1, 2, 1, 2,       5, 2, 3, 3,
+    23,             119,            87,         4, 2, 1, 1, 1, 2,       7, 3, 2, 2,
+    24,             120,            88,         4, 2, 1, 2, 1, 1,       6, 3, 3, 3,
+    25,             121,            89,         2, 1, 2, 1, 4, 1,       3, 3, 3, 5,
+    26,             122,            90,         2, 1, 4, 1, 2, 1,       3, 5, 5, 3,
+    27,             123,            91,         4, 1, 2, 1, 2, 1,       5, 3, 3, 3, 
+    28,             124,            92,         1, 1, 1, 1, 4, 3,       2, 2, 2, 6,
+    29,             125,            93,         1, 1, 1, 3, 4, 1,       2, 2, 3, 6,
+    30,             126,            94,         1, 3, 1, 1, 4, 1,       4, 4, 2, 5,
+    31,             127,            95,         1, 1, 4, 1, 1, 3,       2, 6, 6, 2,
+    FNC3,           FNC3,           96,         1, 1, 4, 3, 1, 1,       2, 4, 6, 3,
+    FNC2,           FNC2,           97,         4, 1, 1, 1, 1, 3,       6, 2, 2, 2,
+    Shift,          Shift,          98,         4, 1, 1, 3, 1, 1,       4, 2, 3, 3,
+    CODE_C,         CODE_C,         99,         1, 1, 3, 1, 4, 1,       2, 4, 4, 5,
+    CODE_В,         FNC4,           CODE_В,     1, 1, 4, 1, 3, 1,       2, 5, 5, 4,
+    FNC4,           CODE_А,         CODE_А,     3, 1, 1, 1, 4, 1,       4, 2, 2, 5,
+    FNC1,           FNC1,           FNC1,       4, 1, 1, 1, 3, 1,       5, 2, 2, 4,
+    Start_A,        Start_A ,       Start_A,    2, 1, 1, 4, 1, 2,       3, 2, 4, 4,
+    Start_В,        Start_В,        Start_В,    2, 1, 1, 2, 1, 4,       4, 2, 4, 4,
+    Start_C,        Start_C,        Start_C,    2, 1, 1, 2, 3, 2,       3, 2, 3, 5,
+};
 
-        printf("%f", y);
-        printf("        "); 
+unsigned char code128_start_codes[] = {
+    Start_A,    2, 1, 1, 4, 1, 2,       3, 2, 4, 4,
+    Start_В,    2, 1, 1, 2, 1, 4,       4, 2, 4, 4,
+    Start_C,    2, 1, 1, 2, 3, 2,       3, 2, 3, 5,
+};
 
-    }
+unsigned char code128_stop_codes[] = {
+    Stop,  2, 3, 3, 1, 1, 1, 2,
+};
 
-    printf("\n\n");
-
-    float angle = atan(k1)*180/3.1415926535;
-    printf("angle: %f \n", angle);
-
-
-    // Угол второго графика
-    float k2 = tan(angle*3.1415926535/180.0 + 90.0*3.1415926535/180.0);
-    printf("k2: %f \n", k2);
-
-    float angle2 = atan(k2)*180/3.1415926535;
-    printf("angle2: %f \n", angle2);
-
-    // Коэффициент второго графика
-    float b2 = point_y - k2*point_x;
-    printf("b2: %f \n", b2);
-
-    float x_instersaption = (b2-b1)/(k1-k2);
-    float y_instersaption_1 = k1*x_instersaption + b1;
-    float y_instersaption_2 = k2*x_instersaption + b2; // Для перепроверки
-
-    printf("x_instersaption: %f \n", x_instersaption);
-    printf("y_instersaption_1: %f \n", y_instersaption_1);
-    printf("y_instersaption_2: %f \n", y_instersaption_2); // Для перепроверки
-
-    printf(""); 
-    printf("\n");
-
-    
-    printf("Graph2:\n"); 
-    for(int x=0; x<10; x++){
-        printf("%d", x);
-        printf("               "); 
-    }
-    printf("\n"); 
-    for(int x=0; x<10; x++){
+// Получаем маску начального символа
+//#define getcode128_start_codesArrayElement_from_dic_debug
+void getcode128_start_codesArrayElement_from_dic(unsigned char *output, unsigned char element){
+    unsigned char position = 1 + 7 * element;
         
-        float y = k2*((float)x) + b2;
-
-        printf("%f", y);
-        printf("        "); 
-
+    for(int i=0; i<6; i++){
+        output[i] = code128_start_codes[position + i];
+        #ifdef getcode128_start_codesArrayElement_from_dic_debug
+            printf("%d, ", output[i]);
+        #endif
     }
-    
 
-    float distance = sqrt(pow(point_x - x_instersaption, 2) + pow(point_y - y_instersaption_1, 2));
-    printf("\n\ndistance: %f \n", distance);
-
-    printf("\n");
-    return distance;
+    #ifdef getcode128_start_codesArrayElement_from_dic_debug
+        printf("\n");
+    #endif   
 }
 
-float getDistance_between_line_and_point(float line_point1_x, float line_point1_y, float line_point2_x, float line_point2_y, float point_x, float point_y){
-
-    //Частные случаи
-    if(line_point1_x==line_point2_x) return abs(line_point1_x-point_x);
-    if(line_point1_y==line_point2_y) return abs(line_point1_y-point_y);
-
-    //Общие случаи
-    float k1 = -(line_point1_y-line_point2_y)/(line_point2_x-line_point1_x); // Тангенс угла первого графика
-    float b1 = -(line_point1_x*line_point2_y - line_point2_x*line_point1_y)/(line_point2_x-line_point1_x); // Коэффициент первого графика
-    float angle = atan(k1)*180/3.1415926535; // Угол первого графика
-    float k2 = tan(angle*3.1415926535/180.0 + 90.0*3.1415926535/180.0); // Тангенс угла второго графика
-    float b2 = point_y - k2*point_x; // Коэффициент второго графика
-    float x_instersaption = (b2-b1)/(k1-k2); // Пересечение графиков по оси Х
-    float y_instersaption_1 = k1*x_instersaption + b1; // Пересечение графиков по оси Y
-    float distance = sqrt(pow(point_x - x_instersaption, 2) + pow(point_y - y_instersaption_1, 2)); // Дистанция между точкой и линией
-    return distance;
+// Получаем маску символа
+void getcode128_codesArrayElement_mask_from_dic(unsigned char *output, unsigned char element){
+    unsigned char position = 3 + 9 * element;
+        
+    for(int i=0; i<6; i++){
+        output[i] = code128_char_codes[position + i];
+    }
 }
 
-int main()
-{
-    float distance = getDistance_between_line_and_point(8.0, 5.0, 8.0, 3.0, 7.0, 2.0);
-    printf("distance: %f \n", distance);
-    return 0;
+// Проверяем символы на наличие Start секции
+void code128_decodeSymbol_Start(
+    unsigned int line1,
+    unsigned int line2,
+    unsigned int line3,
+    unsigned int line4,
+    unsigned int line5,
+    unsigned int line6
+    ){
+
+        unsigned int e1 = line1 + line2;
+        unsigned int e2 = line2 + line3;
+        unsigned int e3 = line3 + line4; 
+        unsigned int e4 = line4 + line5; 
+        unsigned int p  = line1 + line2 + line3 + line4 + line4 + line5;
+
+        unsigned char E1 = normolize_code128_E(e1, p);
+        unsigned char E2 = normolize_code128_E(e2, p);
+        unsigned char E3 = normolize_code128_E(e3, p);
+        unsigned char E4 = normolize_code128_E(e4, p);
+        
+        printf("Position: %d     E: %d %d %d %d\n", i, E1, E2, E3, E4);
 }
 
+// Расшифруем символ
+void code128_decodeSymbol(){
+
+}

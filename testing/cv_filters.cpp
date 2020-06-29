@@ -845,7 +845,7 @@ void filter_clearNotContrast(unsigned char* data, int areaSize_px, unsigned char
 }
 
 // Бинарное цетрально взвешенное значение
-void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blackWhiteDifference){
+void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blackWhiteDifference, unsigned int brightness_persent){
     int data_width = getWidth(data);
     int data_height = getHeight(data);
 
@@ -904,7 +904,7 @@ void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blac
                         long pixel_position = area_position + x_position*3 + y_position*3*data_width;
                         unsigned char gray_value = (char)(( (int)data[pixel_position] + (int)data[pixel_position+1] + (int)data[pixel_position+2])/3);
 
-                        if(gray_value<brightness_avr){
+                        if(gray_value<brightness_avr*100/brightness_persent){
                             data[pixel_position]    = 0;
                             data[pixel_position+1]  = 0;
                             data[pixel_position+2]  = 0;
@@ -920,6 +920,10 @@ void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blac
         }
     }
 
+}
+
+void filter_barcode(unsigned char* data, int areaSize_px, unsigned char min_blackWhiteDifference){
+    filter_barcode(data, areaSize_px, min_blackWhiteDifference, 100);
 }
 
 /*
@@ -2225,6 +2229,12 @@ void cv_applyFilters(unsigned char* data){
         60              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
     );
 
+    filter_barcode(data, 
+        30,             // Ширина и высота зона замера контраста
+        60,             // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        110             // Процент изменения яркости (0-1000)
+    );
+
     // Очищает не контрастные зоны
     filter_clearNotContrast(
         data, 
@@ -2420,7 +2430,8 @@ void example_decode_linear_barcode(unsigned char* data){
     filter_barcode(
         data, 
         40,             // Ширина и высота зона замера контраста
-        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        50,             // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        100
     );
         
     // Определяет объекты
@@ -2440,22 +2451,25 @@ void example_simple_decode_linear_barcode(unsigned char* data){
     filter_barcode(
         data, 
         40,             // Ширина и высота зона замера контраста
-        50              // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        50,             // Минимальное различие темных и светлых участков, чтоб можно было считать, что участок не однотонный
+        110
     );
 
     bool arr_line[data_width];
     //Отправляем данные на рсшифровку
-    for(int i=0; i<data_width; i++){
-        unsigned char r;
-        unsigned char g;
-        unsigned char b;
+    for (int ii=0; ii<10; ii++){
+        for(int i=0; i<data_width; i++){
+            unsigned char r;
+            unsigned char g;
+            unsigned char b;
 
-        get_pixel_rgb(data, data_width, data_height, i, data_height/2, r, g, b);
-        arr_line[i] = (r==0 && g==0 && b==0);
+            get_pixel_rgb(data, data_width, data_height, i, data_height/2 -5+ii, r, g, b);
+            arr_line[i] = (r==0 && g==0 && b==0);
 
+        }
+    
+        detect_linear_barcode(arr_line, data_width);
     }
-
-    detect_linear_barcode(arr_line, data_width);
 
     // Рисуем красную линию, показывающую линию распознования штрих кода
     for(int i=0; i<data_width; i++){

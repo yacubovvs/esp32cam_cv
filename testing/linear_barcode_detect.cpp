@@ -16,6 +16,23 @@
 #define min6(a, b, c, d, e, f)  min2(min3(a, b, c), min3(d, e, f))
 #define max6(a, b, c, d, e, f)  max2(max3(a, b, c), max3(d, e, f))
 
+#define code128_NONE        0xFF
+#define code128_FNC1        0xFE
+#define code128_FNC2        0xFD
+#define code128_FNC3        0xFC
+#define code128_FNC4        0xFB
+#define code128_SHIFT       0xFA
+#define code128_CODE_A      0xF9
+#define code128_CODE_В      0xF7
+#define code128_CODE_C      0xF6
+
+#define code128_START_A     0xF5
+#define code128_START_B     0xF4
+#define code128_START_C     0xF3
+
+#define code128_STOP        0xF2
+#define code128_STOP_A      0xF1
+#define code128_STOP_B      0xF0
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -26,19 +43,6 @@
 */
 
 void detect_linear_barcode_elements(bool* data, unsigned int length, unsigned int lines_array_size, unsigned int &lines_array_length, unsigned int *lines_array);
-
-unsigned char normolize_code128_E(unsigned int e_i, unsigned int p_i){
-    float p = (float)p_i;
-    float e = (float)e_i;
-    if(1.5*p/11<=e && e<2.5*p/11) return 2;
-    if(2.5*p/11<=e && e<3.5*p/11) return 3;
-    if(3.5*p/11<=e && e<4.5*p/11) return 4;
-    if(4.5*p/11<=e && e<5.5*p/11) return 5;
-    if(5.5*p/11<=e && e<6.5*p/11) return 6;
-    if(6.5*p/11<=e && e<7.5*p/11) return 7;
-    return 0;
-}
-
 
 // Та функция, которая вызывается в самом начале
 //#define detect_linear_barcode_debug
@@ -59,11 +63,8 @@ void detect_linear_barcode(bool* data, unsigned int length){
         }
     #endif
 
-    unsigned int e1;
-    unsigned int e2;
-    unsigned int e3;
-    unsigned int e4;
-    unsigned int p;
+    unsigned int start_position = 0;
+    unsigned char start_type = 0;
 
     unsigned int line1;
     unsigned int line2;
@@ -72,34 +73,44 @@ void detect_linear_barcode(bool* data, unsigned int length){
     unsigned int line5;
     unsigned int line6;
 
-    unsigned char E1;
-    unsigned char E2;
-    unsigned char E3;
-    unsigned char E4;
+    unsigned char result = code128_NONE;
 
     //Попробуем сравнить каждый элемент с точкой старта 
-    for (unsigned int i=1; i<lines_array_length-6; i+=6){
+    for (unsigned int i=0; i<lines_array_length-6; i++){
     //    for (int i=1; i<30; i+=6){
-        unsigned int line1 = lines_array[i + 0];
-        unsigned int line2 = lines_array[i + 1];
-        unsigned int line3 = lines_array[i + 2];
-        unsigned int line4 = lines_array[i + 3];
-        unsigned int line5 = lines_array[i + 4];
-        unsigned int line6 = lines_array[i + 5];
+        line1 = lines_array[i + 0];
+        line2 = lines_array[i + 1];
+        line3 = lines_array[i + 2];
+        line4 = lines_array[i + 3];
+        line5 = lines_array[i + 4];
+        line6 = lines_array[i + 5];
 
-        e1 = line1 + line2;
-        e2 = line2 + line3;
-        e3 = line3 + line4; 
-        e4 = line4 + line5; 
-        p = line1 + line2 + line3 + line4 + line4 + line5;
-
-        E1 = normolize_code128_E(e1, p);
-        E2 = normolize_code128_E(e2, p);
-        E3 = normolize_code128_E(e3, p);
-        E4 = normolize_code128_E(e4, p);
-        
-        printf("Position: %d     E: %d %d %d %d\n", i, E1, E2, E3, E4);
+        start_position = i;
+        result = code128_decodeSymbol_Start(line1, line2, line3, line4, line5, line6);
+        if (result!=code128_NONE){
+            //printf("Start position found at %d\n", i);
+            start_type = result;
+            break;
+        }
     }
+
+    //Попробуем сравнить каждый элемент с точкой старта 
+    for (unsigned int i=start_position+6; i<lines_array_length-6; i+=6){
+    //    for (int i=1; i<30; i+=6){
+        line1 = lines_array[i + 0];
+        line2 = lines_array[i + 1];
+        line3 = lines_array[i + 2];
+        line4 = lines_array[i + 3];
+        line5 = lines_array[i + 4];
+        line6 = lines_array[i + 5];
+
+        result = code128_decodeSymbol(line1, line2, line3, line4, line5, line6, start_type);
+        //printf("Position: %d, value: %d \n", i, result);
+        printf("%d ", result);
+
+    }
+
+    printf("\n");
 
 }
 
