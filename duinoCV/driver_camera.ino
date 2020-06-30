@@ -90,7 +90,7 @@ void setup_camera()
   {
     esp32cam::Config cfg;
     cfg.setPins(esp32cam::pins::AiThinker);
-    cfg.setResolution(hiRes);
+    cfg.setResolution(cvRes);
     cfg.setBufferCount(2);
     cfg.setJpeg(cvRes_quality);
 

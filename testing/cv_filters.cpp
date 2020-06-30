@@ -1,7 +1,7 @@
 #define bmp_header_size     54
-#include "linear_barcode_detect_code128.cpp"
 
 #ifndef arduino_device
+    #include "linear_barcode_detect_code128.cpp"
     #include <math.h>
     #include "cv_drawing.cpp"
     #include "cv_shared_functions.cpp"

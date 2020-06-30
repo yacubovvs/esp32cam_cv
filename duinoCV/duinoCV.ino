@@ -45,13 +45,13 @@ MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE
 * - FPS with out using filters
 
 */
-#define cvRes_width     160
-#define cvRes_height    120
+#define cvRes_width     640
+#define cvRes_height    480
 #define cvRes_quality   100 // Max 100 (use 95 for 800x600)
 
 /* Display settings */
 #define display_enable
-#define display_camera_enable
+//#define display_camera_enable
 #define display_camera_contrast   127 // 0-255, better arround 127
 #define display_ssd1306_i2c
 #define display_width             128
