@@ -1,12 +1,10 @@
 #ifndef ESP32CAM_H
 #define ESP32CAM_H
 
-#include "internal/config.hpp"
-#include "internal/frame.hpp"
+#include "config.hpp"
+#include "frame.hpp"
 
 #include <memory>
-
-namespace esp32cam {
 
 class CameraClass
 {
@@ -26,8 +24,8 @@ public:
    *  \param resolution new resolution
    *  \param sleepFor how long to wait for stabilization (millis)
    */
-  bool
-  changeResolution(const Resolution& resolution, int sleepFor = 500);
+  //bool
+  //changeResolution(const Resolution& resolution, int sleepFor = 500);
 
   /** \brief Capture a frame of picture.
    */
@@ -66,6 +64,6 @@ capture()
   return Camera.capture();
 }
 
-} // namespace esp32cam
+
 
 #endif // ESP32CAM_H

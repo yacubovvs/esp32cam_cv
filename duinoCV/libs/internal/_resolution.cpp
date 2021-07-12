@@ -2,7 +2,6 @@
 
 #include <esp_camera.h>
 
-namespace esp32cam {
 
 bool
 Resolution::isValid() const
@@ -40,4 +39,3 @@ Resolution::find(int minWidth, int minHeight)
   return res;
 }
 
-} // namespace esp32cam

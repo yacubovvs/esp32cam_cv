@@ -1,7 +1,6 @@
 #ifndef ESP32CAM_RESOLUTION_HPP
 #define ESP32CAM_RESOLUTION_HPP
 
-namespace esp32cam {
 
 /** \brief Picture width and height.
  */
@@ -37,7 +36,5 @@ public:
 private:
   int m_frameSize = -1;
 };
-
-} // namespace esp32cam
 
 #endif // ESP32CAM_RESOLUTION_HPP

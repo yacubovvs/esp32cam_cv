@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <esp_camera.h>
 
-namespace esp32cam {
 
 struct Frame::CameraFbT : public camera_fb_t
 {
@@ -104,4 +103,3 @@ Frame::toBmp()
   return true;
 }
 
-} // namespace esp32cam

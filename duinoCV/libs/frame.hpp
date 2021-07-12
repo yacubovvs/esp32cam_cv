@@ -7,7 +7,6 @@
 class Client;
 class Print;
 
-namespace esp32cam {
 
 /** \brief A frame of picture.
  */
@@ -106,7 +105,5 @@ private:
 
   friend class CameraClass;
 };
-
-} // namespace esp32cam
 
 #endif // ESP32CAM_FRAME_HPP

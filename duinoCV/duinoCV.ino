@@ -2,13 +2,10 @@
 #include <U8g2lib.h>
 #include "libs/esp32cam.h"
 #include "libs/esp32cam.cpp"
-#include "libs/internal/config.hpp"
-#include "libs/internal/config.cpp"
-#include "libs/internal/frame.hpp"
-#include "libs/internal/frame.cpp"
-#include "libs/internal/pins.hpp"
-#include "libs/internal/resolution.hpp"
-#include "libs/internal/resolution.cpp"
+#include "libs/config.hpp"
+#include "libs/config.cpp"
+#include "libs/frame.hpp"
+#include "libs/frame.cpp"
 #include <WebServer.h>
 #include <WiFi.h>
 #include <string>
@@ -28,26 +25,9 @@
 /* BMP format */
 #define bmp_header_size 54
 
-/* Size of computer vision frame */
-
-/* 
-
-Available modes:
-
-MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE SIZE
-1.      160x120         color 24bit       100
-2.      320x240         color 24bit       100
-3.      640x480         color 24bit       100
-4.      800x600         color 24bit       95?97?99?
-5.      1024x768        color 24bit       97
-
-
-* - FPS with out using filters
-
-*/
 #define cvRes_width     320
 #define cvRes_height    240
-#define cvRes_quality   95 // Max 100 (use 95 for 800x600)
+#define cvRes_quality   98 // Max 100 (use 95 for 800x600)
 
 /* Display settings */
 #define display_enable
@@ -79,11 +59,6 @@ MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE
 
 WebServer server(80);
 
-static auto loRes  = esp32cam::Resolution::find(320, 240);
-static auto vgaRes = esp32cam::Resolution::find(640, 480);
-static auto hiRes  = esp32cam::Resolution::find(1600, 1200); // need quality lower 100
-static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
-
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -96,7 +71,7 @@ static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
     setup_display();
   
     console_print("Initing camera...");
-    delay(250);
+    //delay(250);
     setup_camera();    
 
     #ifdef controls_enable

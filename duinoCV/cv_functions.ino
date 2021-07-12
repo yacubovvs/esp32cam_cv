@@ -7,9 +7,8 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
 
-std::unique_ptr<esp32cam::Frame> capture_CV_Frame(){
-  esp32cam::Camera.changeResolution(cvRes);
-  std::unique_ptr<esp32cam::Frame> frame = esp32cam::capture();  
+std::unique_ptr<Frame> capture_CV_Frame(){
+  std::unique_ptr<Frame> frame = capture();  
   frame->toBmp();
   return frame;
 }
@@ -24,7 +23,7 @@ std::unique_ptr<esp32cam::Frame> capture_CV_Frame(){
 
 
 void cv_diplay_camera_loop(){
-  std::unique_ptr<esp32cam::Frame> frame = capture_CV_Frame();  
+  std::unique_ptr<Frame> frame = capture_CV_Frame();  
   cv_applyFilters(frame->data());
   display_drawFrame(frame->data());
 }

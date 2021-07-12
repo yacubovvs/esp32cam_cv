@@ -1,24 +1,16 @@
+/*
 const char* WIFI_SSID = "len12-75";
 const char* WIFI_PASS = "doc12345";
+*/
+
+const char* WIFI_SSID = "DIR-615";
+const char* WIFI_PASS = "tsdurovo6200";
 
 #define flash_light_pin = 4
 
-
-
 void handleBmp()
 {
-  /*
-  if (!esp32cam::Camera.changeResolution(vgaRes)) {
-    console_print("SET-VGA-RES FAIL");
-  }*/
-
-  static auto res  = esp32cam::Resolution::find(96, 96);
-  if (!esp32cam::Camera.changeResolution(res  )) {
-    console_print("SET-VGA-RES FAIL");
-  }
-  
-
-  auto frame = esp32cam::capture();
+  auto frame = capture();
   if (frame == nullptr) {
     console_print("CAPTURE FAIL");
     server.send(503, "", "");
@@ -44,7 +36,7 @@ void handleBmp()
 
 void serveJpg()
 {
-  auto frame = esp32cam::capture();
+  auto frame = capture();
   if (frame == nullptr) {
     console_print("CAPTURE FAIL");
     server.send(503, "", "");
@@ -61,9 +53,6 @@ void serveJpg()
 
 void handleJpgHi()
 {
-  if (!esp32cam::Camera.changeResolution(hiRes)) {
-    console_print("SET-HI-RES FAIL");
-  }
   serveJpg();
 }
 
@@ -75,14 +64,10 @@ void handleJpg()
 
 void handleMjpeg()
 {
-  if (!esp32cam::Camera.changeResolution(vgaRes)) {
-    console_print("SET-HI-RES FAIL");
-  }
-
   console_print("STREAM BEGIN");
   WiFiClient client = server.client();
   auto startTime = millis();
-  int res = esp32cam::Camera.streamMjpeg(client);
+  int res = Camera.streamMjpeg(client);
   if (res <= 0) {
     console_print("STREAM ERROR " + String(res));
     return;
@@ -95,13 +80,12 @@ void setup_camera()
 {
   Serial.begin(115200);
   {
-    esp32cam::Config cfg;
-    cfg.setPins(esp32cam::pins::AiThinker);
-    cfg.setResolution(cvRes);
+    Config cfg;
+    cfg.setPins(AiThinker);
     cfg.setBufferCount(2);
     cfg.setJpeg(cvRes_quality);
 
-    bool ok = esp32cam::Camera.begin(cfg);
+    bool ok = Camera.begin(cfg);
     console_print(ok ? "CAMERA OK" : "CAMERA FAIL");
 
     if(!ok){

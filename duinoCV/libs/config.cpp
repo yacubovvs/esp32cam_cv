@@ -2,9 +2,8 @@
 
 #include <algorithm>
 #include <cstring>
-#include <esp_camera.h>
+#include "esp32cam.h"
 
-namespace esp32cam {
 namespace detail {
 
 int
@@ -19,6 +18,7 @@ class Config::CameraConfigT : public camera_config_t
 {
 };
 
+
 Config::Config()
   : m_cfg(new CameraConfigT)
 {
@@ -26,9 +26,38 @@ Config::Config()
   m_cfg->xclk_freq_hz = 20000000;
   m_cfg->ledc_timer = LEDC_TIMER_0;
   m_cfg->ledc_channel = LEDC_CHANNEL_0;
-  m_cfg->pixel_format = PIXFORMAT_RGB565;
-  m_cfg->frame_size = FRAMESIZE_QQVGA;
+  m_cfg->pixel_format = PIXFORMAT_GRAYSCALE;
+  //m_cfg->pixel_format = PIXFORMAT_RGB565;
+  /*
+    FRAMESIZE_QVGA for 320x240
+    FRAMESIZE_CIF for 400x296
+    FRAMESIZE_VGA for 640x480
+    FRAMESIZE_SVGA for 800x600
+    FRAMESIZE_XGA for 1024x768
+    FRAMESIZE_SXGA for 1280x1024
+    FRAMESIZE_UXGA for 1600x1200
+  */
+  m_cfg->frame_size = FRAMESIZE_VGA;
   m_cfg->fb_count = 1;
+
+/*
+  m_cfg->pin_pwdn = 32;
+  m_cfg->pin_reset = -1;
+  m_cfg->pin_xclk = 0;
+  m_cfg->pin_sscb_sda = 26;
+  m_cfg->pin_sscb_scl = 27;
+  m_cfg->pin_d7 = 35;
+  m_cfg->pin_d6 = 36;
+  m_cfg->pin_d5 = 39;
+  m_cfg->pin_d4 = 36;
+  m_cfg->pin_d3 = 21;
+  m_cfg->pin_d2 = 19;
+  m_cfg->pin_d1 = 18;
+  m_cfg->pin_d0 = 5;
+  m_cfg->pin_vsync = 25;
+  m_cfg->pin_href = 23;
+  m_cfg->pin_pclk = 22;
+  */
 }
 
 Config::~Config()
@@ -36,7 +65,14 @@ Config::~Config()
   delete m_cfg;
 }
 
+
 Config&
+Config::setResolution()
+{
+  return *this;
+}
+
+Config& 
 Config::setPins(const Pins& pins)
 {
   m_cfg->pin_pwdn = pins.PWDN;
@@ -58,12 +94,6 @@ Config::setPins(const Pins& pins)
   return *this;
 }
 
-Config&
-Config::setResolution(const Resolution& resolution)
-{
-  m_cfg->frame_size = resolution.as<framesize_t>();
-  return *this;
-}
 
 Config&
 Config::setBufferCount(int n)
@@ -100,5 +130,3 @@ Config::setJpeg(int quality)
   m_cfg->jpeg_quality = detail::convertJpegQuality(quality);
   return *this;
 }
-
-} // namespace esp32cam
