@@ -279,7 +279,6 @@ static const unsigned char font_cubos[] = {
 */
 
 
-/*
 void drawString(String dString, int x, int y, unsigned char fontSize){
   int str_len = dString.length() + 1;
   char element_value[str_len];
@@ -291,7 +290,7 @@ void drawString(String dString, int x, int y, unsigned char fontSize){
 void drawString(String dString, int x, int y){
   drawString(dString, x, y, 1);
 }
-*/
+
 
 
 void drawLine(unsigned char* data, int data_width, int data_height, unsigned char* color, int x0, int y0, int x1, int y1){
@@ -463,10 +462,6 @@ void setStr(unsigned char* data, int data_width, int data_height, unsigned char*
   }
 }
 
-/*
-void drawString(char * dString, int x, int y){
-  setStr(dString, x, y, 1);
-}*/
 
 void drawString(unsigned char* data, int data_width, int data_height, unsigned char* color, char * dString, int x, int y, unsigned char fontSize){
   setStr(data, data_width, data_height, color, dString, x, y, fontSize);
@@ -477,23 +472,3 @@ void drawString(unsigned char* data, int data_width, int data_height, unsigned c
   sprintf(str, "%d", val);
   drawString(data, data_width, data_height, color, str, x, y, fontSize);
 }
-
-/*
-
-void drawString_centered(char * dString, int y){
-  drawString(dString, (SCREEN_WIDTH - strlen(dString)*FONT_CHAR_WIDTH)/2, y);  
-}
-
-void drawString_centered(char * dString, int x, int y){
-  drawString(dString, x - strlen(dString)*FONT_CHAR_WIDTH/2, y);  
-}
-
-void drawString_centered(String dString, int y){
-  drawString(dString, (SCREEN_WIDTH - dString.length()*FONT_CHAR_WIDTH)/2, y);  
-}
-
-void drawString_centered(String dString, int x, int y){
-  drawString(dString, x - dString.length()*FONT_CHAR_WIDTH/2, y);  
-}
-
-*/

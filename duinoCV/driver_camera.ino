@@ -7,9 +7,16 @@ const char* WIFI_PASS = "doc12345";
 
 void handleBmp()
 {
+  /*
   if (!esp32cam::Camera.changeResolution(vgaRes)) {
     console_print("SET-VGA-RES FAIL");
+  }*/
+
+  static auto res  = esp32cam::Resolution::find(96, 96);
+  if (!esp32cam::Camera.changeResolution(res  )) {
+    console_print("SET-VGA-RES FAIL");
   }
+  
 
   auto frame = esp32cam::capture();
   if (frame == nullptr) {

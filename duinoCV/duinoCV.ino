@@ -45,13 +45,13 @@ MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE
 * - FPS with out using filters
 
 */
-#define cvRes_width     640
-#define cvRes_height    480
-#define cvRes_quality   100 // Max 100 (use 95 for 800x600)
+#define cvRes_width     320
+#define cvRes_height    240
+#define cvRes_quality   95 // Max 100 (use 95 for 800x600)
 
 /* Display settings */
 #define display_enable
-//#define display_camera_enable
+#define display_camera_enable
 #define display_camera_contrast   127 // 0-255, better arround 127
 #define display_ssd1306_i2c
 #define display_width             128
@@ -60,9 +60,9 @@ MODE    RESOLUTION      COLOR             MAX QUALITY       FPS*        BMP FILE
 //#define display_invert_y
 
 
-#define controls_enable
-#define controls_btn1 12
-#define controls_btn2 13
+//#define controls_enable
+//#define controls_btn1 12
+//#define controls_btn2 13
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -100,7 +100,7 @@ static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
     setup_camera();    
 
     #ifdef controls_enable
-      controls_setup();
+      //controls_setup();
     #endif
   
   }
@@ -110,13 +110,13 @@ static auto cvRes =  esp32cam::Resolution::find(cvRes_width, cvRes_height);
   void loop(){
 
     #ifdef controls_enable
-      controls_loop();
+      //controls_loop();
     #endif
     
     #ifdef display_camera_enable
-      cv_diplay_camera_loop();
+      //cv_diplay_camera_loop();
     #endif
-    cd_loop();
+    //cd_loop();
     loop_server();  
   
   }
