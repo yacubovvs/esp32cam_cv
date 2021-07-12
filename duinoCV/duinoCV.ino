@@ -30,19 +30,14 @@
 #define cvRes_quality   98 // Max 100 (use 95 for 800x600)
 
 /* Display settings */
-#define display_enable
-#define display_camera_enable
-#define display_camera_contrast   127 // 0-255, better arround 127
-#define display_ssd1306_i2c
-#define display_width             128
-#define display_height            64
+#define DISPLAY_CAMERA_CONTRAST   127 // 0-255, better arround 127
+#define DISPLAY_ENEBLED
+#define DISPLAY_WIDTH             128
+#define DISPLAY_HEIGHT            64
+//#define DRAW_IMAGE_ON_DISPLAY
 
 //#define display_invert_y
 
-
-//#define controls_enable
-//#define controls_btn1 12
-//#define controls_btn2 13
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -51,11 +46,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 */
-
-#ifdef display_ssd1306_i2c
-  U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 15, /* data=*/ 14);   // ESP32 Thing, HW I2C with pin remapping
-  typedef u8g2_uint_t u8g_uint_t;
-#endif
 
 WebServer server(80);
 
@@ -74,8 +64,10 @@ WebServer server(80);
     //delay(250);
     setup_camera();    
 
-    #ifdef controls_enable
-      //controls_setup();
+    #ifdef DISPLAY_ENEBLED
+      #ifdef DRAW_IMAGE_ON_DISPLAY
+        drawFrameEnable(true);
+      #endif
     #endif
   
   }
@@ -83,15 +75,10 @@ WebServer server(80);
   
   
   void loop(){
-
-    #ifdef controls_enable
-      //controls_loop();
-    #endif
     
-    #ifdef display_camera_enable
-      //cv_diplay_camera_loop();
+    #ifdef DISPLAY_ENEBLED
+      cv_diplay_camera_loop();
     #endif
-    //cd_loop();
     loop_server();  
   
   }

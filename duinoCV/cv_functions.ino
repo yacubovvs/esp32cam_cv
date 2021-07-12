@@ -28,10 +28,6 @@ void cv_diplay_camera_loop(){
   display_drawFrame(frame->data());
 }
 
-void cd_loop(){
-  
-}
-
 
 /*
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

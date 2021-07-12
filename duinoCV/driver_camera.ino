@@ -1,10 +1,13 @@
-/*
+#include <Arduino.h>
+
 const char* WIFI_SSID = "len12-75";
 const char* WIFI_PASS = "doc12345";
-*/
 
+
+/*
 const char* WIFI_SSID = "DIR-615";
 const char* WIFI_PASS = "tsdurovo6200";
+*/
 
 #define flash_light_pin = 4
 
@@ -16,16 +19,22 @@ void handleBmp()
     server.send(503, "", "");
     return;
   }
+  console_print("Free PSRAM: " + String(ESP.getFreePsram()));
   console_print("CAPTURE OK " +  String(frame->getWidth()) + " " + String(frame->getHeight()) + " " +
                 String(static_cast<int>(frame->size())));
+
+  console_print("Free PSRAM: " + String(ESP.getFreePsram()));
 
   if (!frame->toBmp()) {
     console_print("CONVERT FAIL");
     server.send(503, "", "");
     return;
   }
+
   console_print("CONVERT OK " + String(frame->getWidth()) + " " + String(frame->getHeight()) + " " +
                 String(static_cast<int>(frame->size())));
+
+  console_print("Free PSRAM: " + String(ESP.getFreePsram()));
 
   server.setContentLength(frame->size());
   server.send(200, "image/bmp");
